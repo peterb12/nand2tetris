@@ -7,7 +7,7 @@ M=M-1
 A=M
 D=M-D
 @{truelabel}
-D;{conditional}
+D;{comparison}
 @SP
 A=M
 M=0

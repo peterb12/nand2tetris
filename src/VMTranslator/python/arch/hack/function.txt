@@ -1,0 +1,15 @@
+({entry})
+@{nLocals}
+D=A
+({loop})
+@{out}
+D;JEQ
+@SP
+A=M
+M=0
+@SP
+M=M+1
+D=D-1
+@{loop}
+0;JMP
+({out})

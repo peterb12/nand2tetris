@@ -21,6 +21,7 @@ class Parser:
             self.cmd = squeezed[0]
         if len(squeezed) > 1:
             self._arg1 = squeezed[1]
+        if len(squeezed) > 2:
             self._arg2 = squeezed[2]
         
     def hasMoreCommands(self):
@@ -38,10 +39,24 @@ class Parser:
                 finished = True
 
     def commandType(self):
+        ''' TODO: Might be more concise to just look self.cmd up'''
+        ''' in a dictionary.'''
         if self.cmd == "push":
             return CmdType.C_PUSH
         elif self.cmd == "pop":
             return CmdType.C_POP
+        elif self.cmd == "label":
+            return CmdType.C_LABEL
+        elif self.cmd == "goto":
+            return CmdType.C_GOTO
+        elif self.cmd == "if-goto":
+            return CmdType.C_IF
+        elif self.cmd == "function":
+            return CmdType.C_FUNCTION
+        elif self.cmd == "call":
+            return CmdType.C_CALL
+        elif self.cmd == "return":
+            return CmdType.C_RETURN
         else:
             return CmdType.C_ARITHMETIC
 

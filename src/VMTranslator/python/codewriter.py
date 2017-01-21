@@ -8,14 +8,20 @@ class CodeWriter:
     ''' Generates assembly for given input.'''
 
     labelIndex = 0
+    userLabelDict = {}
+
+    def __createOpTemplate(self, architecture, templateFile):
+        script_dir = os.path.dirname(__file__)
+        arch_dir = os.path.join(script_dir, "arch/" + architecture + "/")
+        template = open(arch_dir + templateFile, "r")
+        opTemplate = template.read()
+        template.close()
+        return opTemplate
 
     def __init__(self, architecture, dirName, asmName):
         self.architecture = architecture
         self.asmName = asmName + ".asm"
-        self.f = open(dirName + "/" + self.asmName, 'w')
-
-        script_dir = os.path.dirname(__file__)
-        arch_dir = os.path.join(script_dir, "arch/" + architecture + "/")
+        self.f = open(dirName + "/" + self.asmName, "w")
 
         self.segmentTable = { "local"    : "LCL",
                               "argument" : "ARG",
@@ -30,40 +36,76 @@ class CodeWriter:
             It's unclear that this is all that useful given the other
             assumptions baked into this code (e.g. number of registers
             and segments) but a programmer can dream.'''
-        template = open(arch_dir + "conditional.txt","r")
-        self.conditional = template.read()
-        template.close()
-        template = open(arch_dir + "arithOneOp.txt","r")
-        self.arithOneOp = template.read()
-        template.close()
-        template = open(arch_dir + "arithTwoOp.txt","r")
-        self.arithTwoOp = template.read()
-        template.close()
-        template = open(arch_dir + "push.txt","r")
-        self.pushOp = template.read()
-        template.close()
-        template = open(arch_dir + "pop.txt", "r")
-        self.popOp = template.read()
-        template.close()
+        self.comparison = self.__createOpTemplate(architecture, "comparison.txt")
+        self.arithOneOp = self.__createOpTemplate(architecture, "arithOneOp.txt")
+        self.arithTwoOp = self.__createOpTemplate(architecture, "arithTwoOp.txt")
+        self.pushOp     = self.__createOpTemplate(architecture, "push.txt")
+        self.popOp      = self.__createOpTemplate(architecture, "pop.txt")
+        self.gotoOp     = self.__createOpTemplate(architecture, "goto.txt")
+        self.ifGotoOp   = self.__createOpTemplate(architecture, "ifgoto.txt")
+        self.functionOp = self.__createOpTemplate(architecture, "function.txt")
         
     def _uniqueLabel(self):
-        label = 'vm$lbl' + str(self.labelIndex)
+        label = 'vm$' + str(self.labelIndex)
         self.labelIndex += 1
         return label
 
     '''This gets reused in a few places, so I parameterized it.'''
-    def _condCode(self, conditional):
+    def _compCode(self, comparison):
         trueLabel = self._uniqueLabel()
         outLabel  = self._uniqueLabel()
-        condString = self.conditional.format(truelabel=trueLabel, outlabel=outLabel, conditional=conditional)
-        self.f.write(condString)
+        condString = self.comparison.format(truelabel=trueLabel, outlabel=outLabel, comparison=comparison)
+        self.f.write(compString)
         
     def setFileName(self, vmname):
         self.vmname = vmname
+
+    def userLabel(self, label):
+        if label in self.userLabelDict:
+            cachedLabel = self.userLabelDict[label]
+        else:
+            cachedLabel = self._uniqueLabel() + label
+            self.userLabelDict[label] = cachedLabel
+        return cachedLabel
+
+    def writeComment(self, cmdName, cmdType, arg1, arg2):
+        self.f.write("// " + cmdName)
+        if cmdType != CmdType.C_ARITHMETIC:
+            self.f.write(" " + arg1)
+        if cmdType == CmdType.C_PUSH or cmdType == CmdType.C_POP:
+            self.f.write(" " + arg2)
+        self.f.write("\n")
+                
+    '''TODO: Test.'''
+    ''' "The scope of the label is the function in which it is defined" '''
+    def writeLabel(self, label):
+        self.f.write("(" + self.userLabel(self.currFunction + "." + label) + ")\n")
+
+    ''' "The jump destination must be located in the same function'''
+    ''' TODO: Make function-local.'''
+    ''' TODO: Test.'''                
+    def writeGoto(self, destination):
+        self.f.write(self.gotoOp.format(dest=self.userLabel(self.currFunction + "." + destination)))
+
+    ''' TODO: Make function-local.'''
+    def writeIfGoto(self, destination):
+        self.f.write(self.ifGotoOp.format(dest=self.userLabel(self.currFunction + "." + destination)))
+
+    def writeFunction(self, name, numLocals):
+        self.currFunction = name
+        loopLabel = self._uniqueLabel()
+        outLabel = self._uniqueLabel()
+        entryPoint = self.userLabel("fn." + name)
+        self.f.write(self.functionOp.format(entry=entryPoint, nLocals=numLocals, loop=loopLabel, out=outLabel))
+
+    def writeCall(self, name, numArgs):
+        print('Unimplemented.')
+        
+    def writeReturn(self):
+        self.currFunctionn = ""
+
         
     def writeArithmetic(self, command):
-        self.f.write("// " + command + "\n")
-
         if command == "add":
             self.f.write(self.arithTwoOp.format(operation="M=D+M"))
         elif command == "sub":
@@ -77,16 +119,15 @@ class CodeWriter:
         elif command == "neg":
             self.f.write(self.arithOneOp.format(operation="M=-M"))
         elif command == "eq":
-            self._condCode("JEQ")
+            self._compCode("JEQ")
         elif command == "gt":
-            self._condCode("JGT")
+            self._compCode("JGT")
         elif command == "lt":
-            self._condCode("JLT")
+            self._compCode("JLT")
         else:
             assert(False) 
 
-    def writePushPop(self, command, segment, index, cmdName):
-        self.f.write('// ' + cmdName + ' ' + segment + ' ' + index + "\n")
+    def writePushPop(self, command, segment, index):
         if command == CmdType.C_PUSH:
             if segment == "constant":
                 self.f.write(self.pushOp.format(address=index,refmode="D=A",extra=""))
@@ -101,7 +142,7 @@ class CodeWriter:
                     extra = extra + ("A=A+D\n")
                 else:
                     extra = extra + ("A=M+D\n")
-                extra = extra + ('D=M')
+                extra = extra + ("D=M")
 
                 self.f.write(self.pushOp.format(address=index,refmode="D=A",extra=extra))
         else:
@@ -113,9 +154,9 @@ class CodeWriter:
                 ''' Note that "extra" must start with a newline. '''
                 extra = "\n@" + self.segmentTable[segment] + "\n"
                 if segment == "temp" or segment == "pointer":
-                    extra = extra + ('D=A+D')
+                    extra = extra + ("D=A+D")
                 else:
-                    extra = extra + ('D=M+D')
+                    extra = extra + ("D=M+D")
                 self.f.write(self.popOp.format(address = index, extra = extra))
 
     def close(self):

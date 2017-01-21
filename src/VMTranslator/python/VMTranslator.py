@@ -29,10 +29,24 @@ if len(sys.argv) > 1:
         coder.setFileName(shortname)
         parser = Parser(currFile)
         while parser.hasMoreCommands():
+            coder.writeComment(parser.commandName(), parser.commandType(), parser.arg1(), parser.arg2())
+            
             if parser.commandType() == CmdType.C_ARITHMETIC:
                 coder.writeArithmetic(parser.arg1())
+            elif parser.commandType() == CmdType.C_LABEL:
+                coder.writeLabel(parser.arg1())
+            elif parser.commandType() == CmdType.C_GOTO:
+                coder.writeGoto(parser.arg1())
+            elif parser.commandType() == CmdType.C_IF:
+                coder.writeIfGoto(parser.arg1())
+            elif parser.commandType() == CmdType.C_FUNCTION:
+                coder.writeFunction(parser.arg1(), parser.arg2())
+            elif parser.commandType() == CmdType.C_CALL:
+                coder.writeCall(parser.arg1(), parser.arg2())
+            elif parser.commandType() == CmdType.C_RETURN:
+                coder.writeReturn()
             else:
-                coder.writePushPop(parser.commandType(), parser.arg1(), parser.arg2(), parser.commandName())
+                coder.writePushPop(parser.commandType(), parser.arg1(), parser.arg2())
             parser.advance()
 
     coder.close()
