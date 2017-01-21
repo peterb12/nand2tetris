@@ -44,7 +44,7 @@ class CodeWriter:
         self.gotoOp     = self.__createOpTemplate(architecture, "goto.txt")
         self.ifGotoOp   = self.__createOpTemplate(architecture, "ifgoto.txt")
         self.functionOp = self.__createOpTemplate(architecture, "function.txt")
-        
+        self.callOp     = self.__createOpTemplate(architecture, "call.txt")
     def _uniqueLabel(self):
         label = 'vm$' + str(self.labelIndex)
         self.labelIndex += 1
@@ -82,7 +82,6 @@ class CodeWriter:
         self.f.write("(" + self.userLabel(self.currFunction + "." + label) + ")\n")
 
     ''' "The jump destination must be located in the same function'''
-    ''' TODO: Make function-local.'''
     ''' TODO: Test.'''                
     def writeGoto(self, destination):
         self.f.write(self.gotoOp.format(dest=self.userLabel(self.currFunction + "." + destination)))
@@ -99,8 +98,20 @@ class CodeWriter:
         self.f.write(self.functionOp.format(entry=entryPoint, nLocals=numLocals, loop=loopLabel, out=outLabel))
 
     def writeCall(self, name, numArgs):
-        print('Unimplemented.')
-        
+        entryPoint = self.userLabel("fn." + name)
+        exitPoint = self._uniqueLabel()
+
+        ''' Push return address.'''
+        self.writePushPop(CmdType.C_PUSH, "constant", exitPoint)
+        ''' Save caller register state '''
+        self.writePushPop(CmdType.C_PUSH, "constant", self.segmentTable["local"])
+        self.writePushPop(CmdType.C_PUSH, "constant", self.segmentTable["argument"])
+        self.writePushPop(CmdType.C_PUSH, "constant", self.segmentTable["this"])
+        self.writePushPop(CmdType.C_PUSH, "constant", self.segmentTable["that"])
+        self.f.write(self.callOp.format(nArgs=numArgs))
+        self.f.write(self.gotoOp.format(dest=entryPoint))
+        self.writeLabel(exitPoint)
+            
     def writeReturn(self):
         self.currFunctionn = ""
 

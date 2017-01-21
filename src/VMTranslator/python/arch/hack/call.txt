@@ -1,0 +1,6 @@
+@{nArgs}
+D=A
+@5
+D=A+D
+@SP
+M=M-D
