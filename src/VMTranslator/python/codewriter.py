@@ -45,6 +45,8 @@ class CodeWriter:
         self.ifGotoOp   = self.__createOpTemplate(architecture, "ifgoto.txt")
         self.functionOp = self.__createOpTemplate(architecture, "function.txt")
         self.callOp     = self.__createOpTemplate(architecture, "call.txt")
+        self.returnOp   = self.__createOpTemplate(architecture, "return.txt")
+        
     def _uniqueLabel(self):
         label = 'vm$' + str(self.labelIndex)
         self.labelIndex += 1
@@ -108,13 +110,16 @@ class CodeWriter:
         self.writePushPop(CmdType.C_PUSH, "constant", self.segmentTable["argument"])
         self.writePushPop(CmdType.C_PUSH, "constant", self.segmentTable["this"])
         self.writePushPop(CmdType.C_PUSH, "constant", self.segmentTable["that"])
+        ''' Configure the rest of the stack frame, notably repositioning LCL. '''
         self.f.write(self.callOp.format(nArgs=numArgs))
+        ''' Jump in to the function '''
         self.f.write(self.gotoOp.format(dest=entryPoint))
+        ''' Provide the label for 'return' to use. '''
         self.writeLabel(exitPoint)
             
     def writeReturn(self):
-        self.currFunctionn = ""
-
+        self.writePushPop(CmdType.C_POP, "argument", 0)
+        self.f.write(self.returnOp)
         
     def writeArithmetic(self, command):
         if command == "add":

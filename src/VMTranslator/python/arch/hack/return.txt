@@ -1,0 +1,40 @@
+@LCL  // Save contents of LCL ("FRAME")...
+D=M
+@R5   
+M=D   // to temporary register
+@ARG  // Set stack pointer...
+A=M+1 
+D=A
+@SP
+M=D   // to ARG+1
+@R5   // THAT = FRAME...
+A=M-1 // ...-1.  Dereference
+D=M   // Grab the value
+@THAT
+M=D   // stash it in THAT.
+@2    // THIS = FRAME -2
+D=A
+@R5   
+A=M-D // Dereference
+D=M
+@THIS
+M=D   // and stash.
+@3    // ARG = FRAME - 3
+D=A
+@R5
+A=M-D
+D=M
+@ARG
+M=D
+@4    // LCL = FRAME - 4
+D=A
+@R5
+A=M-D
+D=M
+@LCL
+M=D
+@5    // RET = FRAME - 5
+D=A
+A=M-D
+A=M
+0;JMP
