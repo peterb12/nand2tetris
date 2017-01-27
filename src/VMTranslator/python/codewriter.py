@@ -46,8 +46,8 @@ class CodeWriter:
         self.ifGotoOp   = self.__createOpTemplate(architecture, "ifgoto.txt")
         self.functionOp = self.__createOpTemplate(architecture, "function.txt")
         self.callOp     = self.__createOpTemplate(architecture, "call.txt")
-        self.returnPreamble = self.__createOpTemplate(architecture, "return1.txt")
-        self.returnOp   = self.__createOpTemplate(architecture, "return.txt")
+        self.returnPreamble = self.__createOpTemplate(architecture, "returnPreamble.txt")
+        self.returnPostamble   = self.__createOpTemplate(architecture, "returnPostamble.txt")
         self.currFunction = ""
         if (emitStartupCode):
             self.f.write(self.startup)
@@ -123,7 +123,7 @@ class CodeWriter:
     def writeReturn(self):
         self.f.write(self.returnPreamble)
         self.writePushPop(CmdType.C_POP, "argument", 0)
-        self.f.write(self.returnOp)
+        self.f.write(self.returnPostamble)
         
     def writeArithmetic(self, command):
         if command == "add":

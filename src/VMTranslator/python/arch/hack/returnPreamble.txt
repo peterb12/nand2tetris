@@ -3,5 +3,5 @@ D=A
 @LCL  
 A=M-D // from LCL-5
 D=M
-@R6
-M=D  // Save it in R6
+@R14
+M=D  // Save it in R14
