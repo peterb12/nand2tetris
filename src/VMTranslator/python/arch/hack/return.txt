@@ -33,8 +33,6 @@ A=M-D
 D=M
 @LCL
 M=D
-@5    // RET = FRAME - 5
-D=A
-A=M-D
+@R6    // RET = our temp saved value
 A=M
 0;JMP

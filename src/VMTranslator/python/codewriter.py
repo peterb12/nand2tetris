@@ -46,6 +46,7 @@ class CodeWriter:
         self.ifGotoOp   = self.__createOpTemplate(architecture, "ifgoto.txt")
         self.functionOp = self.__createOpTemplate(architecture, "function.txt")
         self.callOp     = self.__createOpTemplate(architecture, "call.txt")
+        self.returnPreamble = self.__createOpTemplate(architecture, "return1.txt")
         self.returnOp   = self.__createOpTemplate(architecture, "return.txt")
         self.currFunction = ""
         if (emitStartupCode):
@@ -103,24 +104,24 @@ class CodeWriter:
 
     def writeCall(self, name, numArgs, exitPoint=""):
         entryPoint = self.userLabel("fn." + name)
+        writeExitLabel = False
         if exitPoint == "":
-            exitPoint = self._uniqueLabel()
+            exitPoint = self._uniqueLabel() + ".return"
+            writeExitLabel = True
 
         ''' Push return address.'''
         self.writePushPop(CmdType.C_PUSH, "constant", exitPoint)
-        ''' Save caller register state '''
-        self.writePushPop(CmdType.C_PUSH, "constant", self.segmentTable["local"])
-        self.writePushPop(CmdType.C_PUSH, "constant", self.segmentTable["argument"])
-        self.writePushPop(CmdType.C_PUSH, "constant", self.segmentTable["this"])
-        self.writePushPop(CmdType.C_PUSH, "constant", self.segmentTable["that"])
-        ''' Configure the rest of the stack frame, notably repositioning LCL. '''
+        ''' Save caller register state and configure the rest of 
+            the stack frame, notably repositioning LCL. '''
         self.f.write(self.callOp.format(nArgs=numArgs))
         ''' Jump in to the function '''
         self.f.write(self.gotoOp.format(dest=entryPoint))
-        ''' Provide the label for 'return' to use. '''
-        self.writeLabel(exitPoint)
+        ''' Provide the label for 'return' to use, if none was passed in. '''
+        if writeExitLabel:
+            self.f.write("(" + exitPoint + ")\n")
             
     def writeReturn(self):
+        self.f.write(self.returnPreamble)
         self.writePushPop(CmdType.C_POP, "argument", 0)
         self.f.write(self.returnOp)
         

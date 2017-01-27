@@ -1,0 +1,7 @@
+@5    // Get return address...
+D=A
+@LCL  
+A=M-D // from LCL-5
+D=M
+@R6
+M=D  // Save it in R6
