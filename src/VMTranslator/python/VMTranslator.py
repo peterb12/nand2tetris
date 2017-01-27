@@ -56,6 +56,7 @@ if len(sys.argv) > 1:
                 coder.writePushPop(parser.commandType(), parser.arg1(), parser.arg2())
             parser.advance()
 
+    coder.writeExitLabel()
     coder.close()
 
 else:

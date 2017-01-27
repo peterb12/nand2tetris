@@ -3,4 +3,10 @@ D=A
 @5
 D=A+D
 @SP
-M=M-D
+D=M-D
+@ARG
+M=D
+@SP
+D=M
+@LCL
+M=D

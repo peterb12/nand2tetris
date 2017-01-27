@@ -10,5 +10,3 @@ M=D
 D=A
 @ARG
 M=D
-@vm$fn.Sys.init
-0;JMP

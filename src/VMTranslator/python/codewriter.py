@@ -50,7 +50,8 @@ class CodeWriter:
         self.currFunction = ""
         if (emitStartupCode):
             self.f.write(self.startup)
-
+            self.writeCall("Sys.init", 0, self.userLabel("fn.PROGRAM_END"))
+            
     def _uniqueLabel(self):
         label = 'vm$' + str(self.labelIndex)
         self.labelIndex += 1
@@ -100,9 +101,10 @@ class CodeWriter:
         entryPoint = self.userLabel("fn." + name)
         self.f.write(self.functionOp.format(entry=entryPoint, nLocals=numLocals, loop=loopLabel, out=outLabel))
 
-    def writeCall(self, name, numArgs):
+    def writeCall(self, name, numArgs, exitPoint=""):
         entryPoint = self.userLabel("fn." + name)
-        exitPoint = self._uniqueLabel()
+        if exitPoint == "":
+            exitPoint = self._uniqueLabel()
 
         ''' Push return address.'''
         self.writePushPop(CmdType.C_PUSH, "constant", exitPoint)
@@ -176,5 +178,8 @@ class CodeWriter:
                     extra = extra + ("D=M+D")
                 self.f.write(self.popOp.format(address = index, extra = extra))
 
+    def writeExitLabel(self):
+        self.f.write("(" + self.userLabel("fn.PROGRAM_END") + ")")
+        
     def close(self):
         self.f.close()
