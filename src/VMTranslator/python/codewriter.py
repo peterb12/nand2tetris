@@ -18,7 +18,7 @@ class CodeWriter:
         template.close()
         return opTemplate
 
-    def __init__(self, architecture, dirName, asmName):
+    def __init__(self, architecture, dirName, asmName, emitStartupCode):
         self.architecture = architecture
         self.asmName = asmName + ".asm"
         self.f = open(dirName + "/" + self.asmName, "w")
@@ -36,6 +36,7 @@ class CodeWriter:
             It's unclear that this is all that useful given the other
             assumptions baked into this code (e.g. number of registers
             and segments) but a programmer can dream.'''
+        self.startup    = self.__createOpTemplate(architecture, "startup.txt")
         self.comparison = self.__createOpTemplate(architecture, "comparison.txt")
         self.arithOneOp = self.__createOpTemplate(architecture, "arithOneOp.txt")
         self.arithTwoOp = self.__createOpTemplate(architecture, "arithTwoOp.txt")
@@ -46,7 +47,10 @@ class CodeWriter:
         self.functionOp = self.__createOpTemplate(architecture, "function.txt")
         self.callOp     = self.__createOpTemplate(architecture, "call.txt")
         self.returnOp   = self.__createOpTemplate(architecture, "return.txt")
-        
+        self.currFunction = ""
+        if (emitStartupCode):
+            self.f.write(self.startup)
+
     def _uniqueLabel(self):
         label = 'vm$' + str(self.labelIndex)
         self.labelIndex += 1
@@ -57,7 +61,7 @@ class CodeWriter:
         trueLabel = self._uniqueLabel()
         outLabel  = self._uniqueLabel()
         condString = self.comparison.format(truelabel=trueLabel, outlabel=outLabel, comparison=comparison)
-        self.f.write(compString)
+        self.f.write(condString)
         
     def setFileName(self, vmname):
         self.vmname = vmname
@@ -66,7 +70,7 @@ class CodeWriter:
         if label in self.userLabelDict:
             cachedLabel = self.userLabelDict[label]
         else:
-            cachedLabel = self._uniqueLabel() + label
+            cachedLabel = 'vm$' + label
             self.userLabelDict[label] = cachedLabel
         return cachedLabel
 
@@ -78,17 +82,14 @@ class CodeWriter:
             self.f.write(" " + arg2)
         self.f.write("\n")
                 
-    '''TODO: Test.'''
     ''' "The scope of the label is the function in which it is defined" '''
     def writeLabel(self, label):
         self.f.write("(" + self.userLabel(self.currFunction + "." + label) + ")\n")
 
     ''' "The jump destination must be located in the same function'''
-    ''' TODO: Test.'''                
     def writeGoto(self, destination):
         self.f.write(self.gotoOp.format(dest=self.userLabel(self.currFunction + "." + destination)))
 
-    ''' TODO: Make function-local.'''
     def writeIfGoto(self, destination):
         self.f.write(self.ifGotoOp.format(dest=self.userLabel(self.currFunction + "." + destination)))
 

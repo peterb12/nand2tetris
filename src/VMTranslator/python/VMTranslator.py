@@ -11,18 +11,25 @@ if len(sys.argv) > 1:
     pathname = sys.argv[1]
     vmfiles = []
 
+    ''' "Generate startup code when translating a directory. Do not 
+        generate startup code when translating a single file. Translation
+        of a single file will be used for the basic tests."'''
     (dirName, filename) = os.path.split(pathname)
     if os.path.isdir(pathname):
         asmName = os.path.basename(os.path.normpath(pathname))
         for file in os.listdir(pathname):
             if file.endswith(".vm"):
                 vmfiles.append(dirName + "/" + file)
+        emitStartupCode = True
     else:
+        if dirName == "":
+            dirName = "."
         (shortname, extension) = os.path.splitext(filename)
         asmName = shortname
         vmfiles.append(pathname)
+        emitStartupCode = False
 
-    coder  = CodeWriter("hack", dirName, asmName)
+    coder  = CodeWriter("hack", dirName, asmName, emitStartupCode)
     for currFile in vmfiles:
         (currName, filename) = os.path.split(currFile)
         (shortname, extension) = os.path.splitext(filename)

@@ -1,0 +1,14 @@
+@256
+D=A
+@SP
+M=D
+@512
+D=A
+@LCL
+M=D
+@768
+D=A
+@ARG
+M=D
+@vm$fn.Sys.init
+0;JMP

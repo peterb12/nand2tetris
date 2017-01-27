@@ -1,2 +1,2 @@
 @{dest}
-JMP
+0;JMP
