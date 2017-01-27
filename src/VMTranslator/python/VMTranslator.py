@@ -15,7 +15,8 @@ if len(sys.argv) > 1:
         generate startup code when translating a single file. Translation
         of a single file will be used for the basic tests."'''
     ''' Make sure the pathname is canonical. '''
-    pathname = os.path.join(pathname,"")
+    if os.path.isdir(pathname):
+        pathname = os.path.join(pathname,"")
     (dirName, filename) = os.path.split(pathname)
     if os.path.isdir(pathname):
         asmName = os.path.basename(os.path.normpath(pathname))
