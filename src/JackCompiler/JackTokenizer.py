@@ -6,7 +6,6 @@ from jc_types import LexerState
 
 class JackTokenizer:
 
-    currentTokenType = ""
     keywords = ["class", "constructor", "function", "method", "field",
                 "static", "var", "int", "char", "boolean", "void",
                 "true", "false", "null", "this", "let", "do", "if",
@@ -20,24 +19,16 @@ class JackTokenizer:
         self.currentToken = ""
         self.savedChar = ""
         self.lexerState = LexerState.START
+        self.currentTokenType = ""
         
     ''' hasMoreTokens -> Boolean '''
     ''' Do we have more tokens in the input?'''
+    ''' Assumes that advance() has been called at least once. '''
     def hasMoreTokens(self):
         if self.currentToken and self.currentToken != "":
             return True
         return False
 
-    def _stateIsTerminal(self):
-        if (self.lexerState == LexerState.SYMBOL
-            or self.lexerState == LexerState.INTEGER
-            or self.lexerState == LexerState.STRING
-            or self.lexerState == LexerState.KEYWORD
-            or self.lexerState == LexerState.IDENTIFIER):
-            return True
-        else:
-            return False
-        
     def advance(self):
         self.lexerState = LexerState.START
         self.currentToken = ""
