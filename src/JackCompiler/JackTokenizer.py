@@ -1,8 +1,8 @@
 import sys
 import os
 from xml.sax.saxutils import escape
-from jc_types import TokenType
 from jc_types import LexerState
+from jc_types import TokenType
 
 class JackTokenizer:
 
@@ -12,7 +12,7 @@ class JackTokenizer:
                 "else", "while", "return"]
     symbols = ["{", "}", "(", ")", "[", "]", ".", ",", ";", "+", "-", "*",
                   "/", "&", "|", "<", ">", "=", "-"]
-    
+
     ''' Constructor '''
     def __init__(self, fname):
         self.currentFile = open(fname, encoding="utf-8")
@@ -20,7 +20,26 @@ class JackTokenizer:
         self.savedChar = ""
         self.lexerState = LexerState.START
         self.currentTokenType = ""
-        
+
+    ''' Return the current token as an XML element. '''
+    def genTokenElement(self):
+        element = ""
+        if (self.tokenType() == TokenType.KEYWORD):
+            element = "<keyword> " + self.keyWord() + " </keyword>"
+        elif (self.tokenType() == TokenType.SYMBOL):
+            element = "<symbol> " + self.symbol() + " </symbol>"
+        elif (self.tokenType() == TokenType.IDENTIFIER):
+            element = "<identifier> " + self.identifier() + " </identifier>"
+        elif (self.tokenType() == TokenType.INT_CONST):
+            element = "<integerConstant> " + self.intVal() + " </integerConstant>"
+        elif (self.tokenType() == TokenType.STRING_CONST):
+            element = "<string> " + self.stringVal() + " </string>"
+        else:
+            ''' Unhandled input, lexer is broken'''
+            assert False
+        return element
+
+
     ''' hasMoreTokens -> Boolean '''
     ''' Do we have more tokens in the input?'''
     ''' Assumes that advance() has been called at least once. '''
@@ -32,7 +51,7 @@ class JackTokenizer:
     def advance(self):
         self.lexerState = LexerState.START
         self.currentToken = ""
-        
+
         while (self.lexerState != LexerState.FINISHED):
             if self.lexerState == LexerState.START:
                 ''' Process lookahead, if any. '''
@@ -125,15 +144,15 @@ class JackTokenizer:
     ''' Return keyword which is the current token. '''
     def keyWord(self):
         return self.currentToken
-        
+
     ''' Returns character which is the current token. '''
     def symbol(self):
         return escape(self.currentToken)
-    
+
     ''' Returns identifier which is the current token. '''
     def identifier(self):
         return self.currentToken
-        
+
     ''' Returns integer value of current token (req: INT_CONST)'''
     def intVal(self):
         return self.currentToken
@@ -143,27 +162,13 @@ class JackTokenizer:
         return self.currentToken
 
 
-pathname = sys.argv[1]
+
+'''pathname = sys.argv[1]
 tokenizer = JackTokenizer(pathname)
 print("<tokens>")
 tokenizer.advance()
 while (tokenizer.hasMoreTokens()):
-    if (tokenizer.tokenType() == TokenType.KEYWORD):
-        print("<keyword> " + tokenizer.keyWord() + " </keyword>")
-    elif (tokenizer.tokenType() == TokenType.SYMBOL):
-        print("<symbol> " + tokenizer.symbol() + " </symbol>")        
-    elif (tokenizer.tokenType() == TokenType.IDENTIFIER):
-        print("<identifier> " + tokenizer.identifier() + " </identifier>")
-    elif (tokenizer.tokenType() == TokenType.INT_CONST):
-        print("<integerConstant> " + tokenizer.intVal() + " </integerConstant>")
-    elif (tokenizer.tokenType() == TokenType.STRING_CONST):
-        print("<string> " + tokenizer.stringVal() + " </string>")
-    else:
-        ''' Unhandled input, lexer is broken'''
-        assert False
-        
-        
+    element = tokenizer.genTokenElement()
+    print (element)
     tokenizer.advance()
-print("</tokens>")
-    
-        
+print("</tokens>")'''
