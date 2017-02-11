@@ -6,12 +6,10 @@ from parser import Parser
 from codewriter import CodeWriter
 
 if len(sys.argv) > 1:
-    '''For testing.'''
-    '''pathname =  "/Users/pberger/Dropbox/Project/Programming/nand2tetris/projects/07/MemoryAccess/StaticTest/StaticTest.vm"'''
     pathname = sys.argv[1]
     vmfiles = []
 
-    ''' "Generate startup code when translating a directory. Do not 
+    ''' "Generate startup code when translating a directory. Do not
         generate startup code when translating a single file. Translation
         of a single file will be used for the basic tests."'''
     ''' Make sure the pathname is canonical. '''
@@ -40,7 +38,7 @@ if len(sys.argv) > 1:
         parser = Parser(currFile)
         while parser.hasMoreCommands():
             coder.writeComment(parser.commandName(), parser.commandType(), parser.arg1(), parser.arg2())
-            
+
             if parser.commandType() == CmdType.C_ARITHMETIC:
                 coder.writeArithmetic(parser.arg1())
             elif parser.commandType() == CmdType.C_LABEL:

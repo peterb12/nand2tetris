@@ -11,9 +11,9 @@ class JackTokenizer:
                 "true", "false", "null", "this", "let", "do", "if",
                 "else", "while", "return"]
     symbols = ["{", "}", "(", ")", "[", "]", ".", ",", ";", "+", "-", "*",
-                  "/", "&", "|", "<", ">", "=", "-"]
+                  "/", "&", "|", "<", ">", "=", "~"]
 
-    ''' Constructor '''
+    # Constructor
     def __init__(self, fname):
         self.currentFile = open(fname, encoding="utf-8")
         self.currentToken = ""
@@ -21,7 +21,7 @@ class JackTokenizer:
         self.lexerState = LexerState.START
         self.currentTokenType = ""
 
-    ''' Return the current token as an XML element. '''
+    # Return the current token as an XML element.
     def genTokenElement(self):
         element = ""
         if (self.tokenType() == TokenType.KEYWORD):
@@ -33,16 +33,16 @@ class JackTokenizer:
         elif (self.tokenType() == TokenType.INT_CONST):
             element = "<integerConstant> " + self.intVal() + " </integerConstant>"
         elif (self.tokenType() == TokenType.STRING_CONST):
-            element = "<string> " + self.stringVal() + " </string>"
+            element = "<stringConstant> " + self.stringVal() + " </stringConstant>"
         else:
-            ''' Unhandled input, lexer is broken'''
+            # Unhandled input, lexer is broken
             assert False
         return element
 
 
-    ''' hasMoreTokens -> Boolean '''
-    ''' Do we have more tokens in the input?'''
-    ''' Assumes that advance() has been called at least once. '''
+    # hasMoreTokens -> Boolean
+    # Do we have more tokens in the input?
+    # Assumes that advance() has been called at least once.
     def hasMoreTokens(self):
         if self.currentToken and self.currentToken != "":
             return True
@@ -54,22 +54,22 @@ class JackTokenizer:
 
         while (self.lexerState != LexerState.FINISHED):
             if self.lexerState == LexerState.START:
-                ''' Process lookahead, if any. '''
+                # Process lookahead, if any.
                 if (self.savedChar != ""):
                     cchar = self.savedChar
                     self.savedChar = ""
                 else:
-                    ''' No lookahead, read the next character '''
+                    # No lookahead, read the next character
                     cchar = self.currentFile.read(1)
                 self.lexerState = LexerState.RECOGNIZE
             elif self.lexerState == LexerState.RECOGNIZE:
                 if cchar == "":
                     self.lexerState = LexerState.FINISHED
                 elif cchar == "/":
-                    ''' Requires lookahead. Most compliated bit.'''
+                    # Requires lookahead. Most compliated bit.
                     lchar = self.currentFile.read(1)
                     if (lchar != "/" and lchar != "*"):
-                        ''' Not a comment, save lookahead. '''
+                        # Not a comment, save lookahead.
                         self.savedChar = lchar
                         self.lexerState = LexerState.SYMBOL
                     else:
@@ -86,21 +86,21 @@ class JackTokenizer:
                 elif (cchar.isalnum() or cchar == "_"):
                     self.lexerState = LexerState.ALPHA
                 else:
-                    ''' None of the above.  Advance. '''
+                    # None of the above.  Advance.
                     self.lexerState = LexerState.START
-                ''' END RECOGNIZE.  After this it's easy. '''
+                # END RECOGNIZE.  After this it's easy.
             elif self.lexerState == LexerState.CCOMMENT:
-                ''' C comments end with "*/" '''
+                # C comments end with "*/"
                 cchar = self.currentFile.read(1)
                 if (cchar == '*'):
-                    ''' Need lookahead. '''
+                    # Need lookahead.
                     lchar = self.currentFile.read(1)
                     if (lchar == "/"):
                         self.lexerState = LexerState.START
                     else:
                         self.savedChar = lchar
             elif self.lexerState == LexerState.CPPCOMMENT:
-                ''' CPP comments end at EOL. '''
+                # CPP comments end at EOL.
                 cchar = self.currentFile.read(1)
                 if (cchar == '\n'):
                     self.lexerState = LexerState.START
@@ -115,7 +115,7 @@ class JackTokenizer:
                     self.savedChar = cchar
                     self.currentTokenType = TokenType.INT_CONST
                     self.lexerState = LexerState.FINISHED
-                ''' We found another digit, advance. '''
+                # We found another digit, advance.
             elif self.lexerState == LexerState.QUOTE:
                 cchar = self.currentFile.read(1)
                 if (cchar and cchar != '"'):
@@ -133,42 +133,28 @@ class JackTokenizer:
                     else:
                         self.currentTokenType = TokenType.IDENTIFIER
                     self.lexerState = LexerState.FINISHED
-                ''' We just read another alpha.  Advance.'''
-            elif self.lexerState == LexerState.FINISHED:
-                ''' Do nothing. '''
+                # We just read another alpha.  Advance.
 
-    '''Return type of current token.'''
+    # Return type of current token.
     def tokenType(self):
         return self.currentTokenType
 
-    ''' Return keyword which is the current token. '''
+    # Return keyword which is the current token.
     def keyWord(self):
         return self.currentToken
 
-    ''' Returns character which is the current token. '''
+    # Returns character which is the current token.
     def symbol(self):
         return escape(self.currentToken)
 
-    ''' Returns identifier which is the current token. '''
+    # Returns identifier which is the current token.
     def identifier(self):
         return self.currentToken
 
-    ''' Returns integer value of current token (req: INT_CONST)'''
+    # Returns integer value of current token (req: INT_CONST)
     def intVal(self):
         return self.currentToken
 
-    ''' Returns string val of current token without quotes (req: STRING_CONST)'''
+    # Returns string val of current token without quotes (req: STRING_CONST)
     def stringVal(self):
         return self.currentToken
-
-
-
-'''pathname = sys.argv[1]
-tokenizer = JackTokenizer(pathname)
-print("<tokens>")
-tokenizer.advance()
-while (tokenizer.hasMoreTokens()):
-    element = tokenizer.genTokenElement()
-    print (element)
-    tokenizer.advance()
-print("</tokens>")'''
