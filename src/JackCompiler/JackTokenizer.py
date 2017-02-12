@@ -22,30 +22,32 @@ class JackTokenizer:
         self.savedChar = ""
         self.lexerState = LexerState.START
         self.currentTokenType = ""
-        if (debugMode == True):
+        if (self.debugMode == True):
             (currName, filepart) = os.path.split(filename)
             (shortName, extension) = os.path.splitext(filepart)
             xmlName = shortName + "Tokens.xml"
             self.f = open(dirName + "/" + xmlName, "w")
 
     # Return the current token as an XML element.
-    def genTokenElement(self):
+    def genTokenElement(self, attributeString):
         element = ""
+        assert (attributeString == "" or attributeString[0] == ' '), "Internal error."
+        attributeString = attributeString + "> "
         if (self.tokenType() == TokenType.KEYWORD):
-            element = "<keyword> " + self.keyWord() + " </keyword>"
+            element = "<keyword" + attributeString + self.keyWord() + " </keyword>"
         elif (self.tokenType() == TokenType.SYMBOL):
-            element = "<symbol> " + self.symbol() + " </symbol>"
+            element = "<symbol" + attributeString + self.symbol() + " </symbol>"
         elif (self.tokenType() == TokenType.IDENTIFIER):
-            element = "<identifier> " + self.identifier() + " </identifier>"
+            element = "<identifier" + attributeString + self.identifier() + " </identifier>"
         elif (self.tokenType() == TokenType.INT_CONST):
-            element = "<integerConstant> " + self.intVal() + " </integerConstant>"
+            element = "<integerConstant" + attributeString + self.intVal() + " </integerConstant>"
         elif (self.tokenType() == TokenType.STRING_CONST):
-            element = "<stringConstant> " + self.stringVal() + " </stringConstant>"
+            element = "<stringConstant" + attributeString + self.stringVal() + " </stringConstant>"
         else:
             # Unhandled input, lexer is broken
             assert False
 
-        if (debugMode == True):
+        if (self.debugMode == True):
             self.f.write(element + "\n")
         return element
 

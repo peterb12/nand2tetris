@@ -1,7 +1,9 @@
 import sys
 import os
 from JackTokenizer import JackTokenizer
+from jc_types import Scope
 from jc_types import TokenType
+from SymbolTable import SymbolTable
 
 class CompilationEngine:
 
@@ -12,10 +14,13 @@ class CompilationEngine:
 
     # Constructor
     def __init__(self, dirName, filename):
+        if (self.debugMode == True):
+            print("Compilation engine initialized.")
         self.lexer = JackTokenizer(filename)
         self.lexer.advance()
+        self.symbolTable = SymbolTable()
         self.treeLevel = 0
-        if (debugMode == True):
+        if (self.debugMode == True):
             (currName, filepart) = os.path.split(filename)
             (shortName, extension) = os.path.splitext(filepart)
             xmlName = shortName + ".xml"
@@ -31,20 +36,20 @@ class CompilationEngine:
             assert self.lexer.keyWord() == sequence, "Syntax error."
         # No validation for identifier sequences.
 
-    def genLeaf(self):
-        if (debugMode == True):
+    def genLeaf(self, attributes=""):
+        if (self.debugMode == True):
             level = self.treeLevel
             leaf = ""
             while (level > 0):
                 leaf = leaf + "  "
                 level = level - 1
-            leaf = leaf + self.lexer.genTokenElement() + "\n"
+            leaf = leaf + self.lexer.genTokenElement(attributes) + "\n"
             self.f.write(leaf)
         # Generating a leaf should advance the lexer.
         self.lexer.advance()
 
     def genBeginBranch(self, branchName):
-        if (debugMode == True):
+        if (self.debugMode == True):
             branch = ""
             level = self.treeLevel
             while (level > 0):
@@ -55,7 +60,7 @@ class CompilationEngine:
             self.f.write(branch)
 
     def genEndBranch(self, branchName):
-        if (debugMode == True):
+        if (self.debugMode == True):
             branch = ""
             self.treeLevel = self.treeLevel - 1
             level = self.treeLevel
@@ -102,25 +107,51 @@ class CompilationEngine:
 
         self.genEndBranch(tag)
 
+    # type: 'int' | 'char' | 'boolean' | className
+    def _extractType(self):
+        outType = ""
+        if (self.lexer.tokenType() == TokenType.KEYWORD):
+            outType = self.lexer.keyWord()
+            assert (outType == 'int' or outType == 'char' or outType == 'boolean'), "Syntax error."
+        else:
+            # TODO: Restrict identifier to a className
+            outType = self.lexer.identifier()
+        return outType
+
 
     def _emitGenericVarDec(self):
         # field | static | var, validation must be done by caller.
+        varKind = Scope.scopeForString(self.lexer.keyWord())
         self.genLeaf()
 
         # type
-        # todo: validate 'type' terminal
+        varType = self._extractType()
         self.genLeaf()
 
         # varName
         self.validate(TokenType.IDENTIFIER, "")
-        self.genLeaf()
+        varName = self.lexer.identifier()
+        # Now we have a complete variable. Add it to the symbol
+        # table.
+        self.symbolTable.define(varName, varType, varKind)
+        attributes = ""
+        if (self.debugMode == True):
+            attributes = ' name="' + varName + '" type="' + self.symbolTable.typeOf(varName) + '" kind="'  + str(self.symbolTable.kindOf(varName)) + '" ref="' + str(self.symbolTable.indexOf(varName)) + '"'
+
+        self.genLeaf(attributes)
+
 
         #  Zero or more ("," varName)
         while (self.lexer.tokenType() == TokenType.SYMBOL
                and (self.lexer.symbol() == ",")):
             self.genLeaf() # ","
             self.validate(TokenType.IDENTIFIER, "")
-            self.genLeaf() # varName
+            varName = self.lexer.identifier()
+            self.symbolTable.define(varName, varType, varKind)
+            if (self.debugMode == True):
+                attributes = ' name="' + varName + '" type="' + self.symbolTable.typeOf(varName) + '" kind="'  + str(self.symbolTable.kindOf(varName)) + '" ref="' + str(self.symbolTable.indexOf(varName)) + '"'
+
+            self.genLeaf(attributes) # varName
 
         # ";"
         self.validate(TokenType.SYMBOL, ";")
