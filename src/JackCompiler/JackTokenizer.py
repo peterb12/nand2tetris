@@ -13,6 +13,8 @@ class JackTokenizer:
     symbols = ["{", "}", "(", ")", "[", "]", ".", ",", ";", "+", "-", "*",
                   "/", "&", "|", "<", ">", "=", "~"]
 
+    debugMode = False
+
     # Constructor
     def __init__(self, fname):
         self.currentFile = open(fname, encoding="utf-8")
@@ -20,6 +22,11 @@ class JackTokenizer:
         self.savedChar = ""
         self.lexerState = LexerState.START
         self.currentTokenType = ""
+        if (debugMode == True):
+            (currName, filepart) = os.path.split(filename)
+            (shortName, extension) = os.path.splitext(filepart)
+            xmlName = shortName + "Tokens.xml"
+            self.f = open(dirName + "/" + xmlName, "w")
 
     # Return the current token as an XML element.
     def genTokenElement(self):
@@ -37,6 +44,9 @@ class JackTokenizer:
         else:
             # Unhandled input, lexer is broken
             assert False
+
+        if (debugMode == True):
+            self.f.write(element + "\n")
         return element
 
 

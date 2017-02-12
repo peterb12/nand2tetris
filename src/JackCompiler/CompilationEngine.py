@@ -8,15 +8,18 @@ class CompilationEngine:
     operators = ["+", "-", "*", "/", "&", "&amp;", "|", "<", "&lt;", "&gt;", ">", "="]
     unaryOperators = ["-", "~"]
 
+    debugMode = False
+
     # Constructor
     def __init__(self, dirName, filename):
         self.lexer = JackTokenizer(filename)
         self.lexer.advance()
         self.treeLevel = 0
-        (currName, filepart) = os.path.split(filename)
-        (shortName, extension) = os.path.splitext(filepart)
-        xmlName = shortName + ".xml"
-        self.f = open(dirName + "/" + xmlName, "w")
+        if (debugMode == True):
+            (currName, filepart) = os.path.split(filename)
+            (shortName, extension) = os.path.splitext(filepart)
+            xmlName = shortName + ".xml"
+            self.f = open(dirName + "/" + xmlName, "w")
 
     # This is just a little convenience function to get some of
     # the messy looking asserts out of the main body of the code.
@@ -29,36 +32,39 @@ class CompilationEngine:
         # No validation for identifier sequences.
 
     def genLeaf(self):
-        level = self.treeLevel
-        leaf = ""
-        while (level > 0):
-            leaf = leaf + "  "
-            level = level - 1
-        leaf = leaf + self.lexer.genTokenElement() + "\n"
-        self.f.write(leaf)
+        if (debugMode == True):
+            level = self.treeLevel
+            leaf = ""
+            while (level > 0):
+                leaf = leaf + "  "
+                level = level - 1
+            leaf = leaf + self.lexer.genTokenElement() + "\n"
+            self.f.write(leaf)
         # Generating a leaf should advance the lexer.
         self.lexer.advance()
 
     def genBeginBranch(self, branchName):
-        branch = ""
-        level = self.treeLevel
-        while (level > 0):
-            branch = branch + "  "
-            level = level - 1
-        branch = branch + "<" + branchName + ">\n"
-        self.treeLevel = self.treeLevel + 1
-        self.f.write(branch)
+        if (debugMode == True):
+            branch = ""
+            level = self.treeLevel
+            while (level > 0):
+                branch = branch + "  "
+                level = level - 1
+            branch = branch + "<" + branchName + ">\n"
+            self.treeLevel = self.treeLevel + 1
+            self.f.write(branch)
 
     def genEndBranch(self, branchName):
-        branch = ""
-        self.treeLevel = self.treeLevel - 1
-        level = self.treeLevel
-        while (level > 0):
-            branch = branch + "  "
-            level = level - 1
-        branch = branch + "</" + branchName + ">\n"
-        assert self.treeLevel >= 0, "Parse failure"
-        self.f.write(branch)
+        if (debugMode == True):
+            branch = ""
+            self.treeLevel = self.treeLevel - 1
+            level = self.treeLevel
+            while (level > 0):
+                branch = branch + "  "
+                level = level - 1
+            branch = branch + "</" + branchName + ">\n"
+            assert self.treeLevel >= 0, "Parse failure"
+            self.f.write(branch)
 
     # 'class' className '{' classVarDec* subroutineDec* '}'
     # className: identifier
