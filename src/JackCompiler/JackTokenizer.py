@@ -164,6 +164,7 @@ class JackTokenizer:
         return self.currentToken
 
     # Returns integer value of current token (req: INT_CONST)
+    # nb: Despite name, this is an integer-as-string, not as int.
     def intVal(self):
         return self.currentToken
 

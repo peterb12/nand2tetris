@@ -4,6 +4,7 @@ from JackTokenizer import JackTokenizer
 from jc_types import Scope
 from jc_types import TokenType
 from SymbolTable import SymbolTable
+from VMWriter import VMWriter
 
 class CompilationEngine:
 
@@ -16,13 +17,16 @@ class CompilationEngine:
     def __init__(self, dirName, filename):
         if (self.debugMode == True):
             print("Compilation engine initialized.")
+        (currName, filepart) = os.path.split(filename)
+        (shortName, extension) = os.path.splitext(filepart)
+        vmName = shortName + ".vm"
+
         self.lexer = JackTokenizer(filename)
         self.lexer.advance()
         self.symbolTable = SymbolTable()
+        self.vmwriter = VMWriter(dirName, vmName)
         self.treeLevel = 0
         if (self.debugMode == True):
-            (currName, filepart) = os.path.split(filename)
-            (shortName, extension) = os.path.splitext(filepart)
             xmlName = shortName + ".xml"
             self.f = open(dirName + "/" + xmlName, "w")
 
@@ -241,10 +245,18 @@ class CompilationEngine:
                  and self.lexer.symbol() == ")")):
                 assert (self.lexer.tokenType() == TokenType.IDENTIFIER
                         or self.lexer.tokenType() == TokenType.KEYWORD), "Syntax error."
+                varType = self._extractType()
                 self.genLeaf() # type
 
                 assert self.lexer.tokenType() == TokenType.IDENTIFIER, "Syntax error."
-                self.genLeaf() # varName
+                varName = self.lexer.identifier()
+                self.symbolTable.define(varName, varType, Scope.ARG)
+                # This debugging boilerplate is a little distracting.
+                # Would be great to refactor it so it's hidden
+                attributes = ""
+                if (self.debugMode == True):
+                    attributes = ' name="' + varName + '" type="' + self.symbolTable.typeOf(varName) + '" kind="'  + Scope.ARG + '" ref="' + str(self.symbolTable.indexOf(varName)) + '"'
+                self.genLeaf(attributes) # varName
 
                 #  Zero or more
                 if (self.lexer.tokenType() == TokenType.SYMBOL
@@ -408,6 +420,8 @@ class CompilationEngine:
 
     # 'return' expression? ';'
     def compileReturn(self):
+        self.vmwriter.writeReturn()
+
         tag = "returnStatement"
         self.genBeginBranch(tag)
 
@@ -419,11 +433,14 @@ class CompilationEngine:
         if (not (self.lexer.tokenType() == TokenType.SYMBOL
                  and self.lexer.symbol() == ";")):
             self.compileExpression()
+            # compileExpression() will leave the result pushed on the stack.
 
         self.validate(TokenType.SYMBOL, ";")
         self.genLeaf()
 
         self.genEndBranch(tag)
+        # Actually emit the VM code.
+        self.vmwriter.writeReturn()
 
     # 'if' '(' expression ')' '{' statements '}' ('else' '{' statements '}')?
     def compileIf(self):
@@ -507,6 +524,13 @@ class CompilationEngine:
             or self.lexer.tokenType() == TokenType.STRING_CONST
             or self.lexer.tokenType() == TokenType.KEYWORD):
             self.genLeaf()
+
+            if (self.lexer.tokenType() == TokenType.KEYWORD):
+                # keywordConstant: true, false, null, or this
+                print("Not implemented.")
+            elif (self.lexer.tokenType() == TokenType.INT_CONST):
+                # integerConstant
+                self.vmwriter.writePush("constant", self.lexer.integer())
         elif (self.lexer.tokenType() == TokenType.IDENTIFIER):
             self.genLeaf()
             if (self.lexer.tokenType() == TokenType.SYMBOL):
