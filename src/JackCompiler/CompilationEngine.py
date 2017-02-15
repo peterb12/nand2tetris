@@ -26,6 +26,7 @@ class CompilationEngine:
         self.symbolTable = SymbolTable()
         self.vmwriter = VMWriter(dirName, vmName)
         self.treeLevel = 0
+        self.labelIndex = 0
         if (self.debugMode == True):
             xmlName = shortName + ".xml"
             self.f = open(dirName + "/" + xmlName, "w")
@@ -40,8 +41,20 @@ class CompilationEngine:
             assert self.lexer.keyWord() == sequence, "Syntax error."
         # No validation for identifier sequences.
 
-    def genLeaf(self, attributes=""):
+    def createLabel(self):
+        label = "filename$" + str(self.labelIndex)
+        self.labelIndex = self.labelIndex + 1
+        return label
+
+    # It's called genLeaf(), but the most important thing to note
+    # about this is that it advances the lexer!  The corollary to this
+    # is that if you are going to generate VM code based on this
+    # leaf, you must get whatever you need from the leaf BEFORE
+    # you call genLeaf.
+    def genLeaf(self, validateType="", validateAtom="", attributes=""):
         if (self.debugMode == True):
+            if (validateType != ""):
+                self.validate(validateType, validateAtom)
             level = self.treeLevel
             leaf = ""
             while (level > 0):
@@ -86,12 +99,10 @@ class CompilationEngine:
         self.genLeaf()
 
         # className
-        self.validate(TokenType.IDENTIFIER, "")
-        self.genLeaf()
+        self.genLeaf(TokenType.IDENTIFIER)
 
         # '{'
-        self.validate(TokenType.SYMBOL, "{")
-        self.genLeaf()
+        self.genLeaf(TokenType.SYMBOL, "{")
 
         # Zero or more
         while (self.lexer.tokenType() == TokenType.KEYWORD
@@ -106,8 +117,7 @@ class CompilationEngine:
                    or self.lexer.keyWord() == "method")):
             self.compileSubroutine() # Recurse
 
-        self.validate(TokenType.SYMBOL, "}")
-        self.genLeaf()
+        self.genLeaf(TokenType.SYMBOL, "}")
 
         self.genEndBranch(tag)
 
@@ -133,7 +143,6 @@ class CompilationEngine:
         self.genLeaf()
 
         # varName
-        self.validate(TokenType.IDENTIFIER, "")
         varName = self.lexer.identifier()
         # Now we have a complete variable. Add it to the symbol
         # table.
@@ -142,24 +151,22 @@ class CompilationEngine:
         if (self.debugMode == True):
             attributes = ' name="' + varName + '" type="' + self.symbolTable.typeOf(varName) + '" kind="'  + str(self.symbolTable.kindOf(varName)) + '" ref="' + str(self.symbolTable.indexOf(varName)) + '"'
 
-        self.genLeaf(attributes)
+        self.genLeaf(TokenType.IDENTIFIER, "", attributes)
 
 
         #  Zero or more ("," varName)
         while (self.lexer.tokenType() == TokenType.SYMBOL
                and (self.lexer.symbol() == ",")):
             self.genLeaf() # ","
-            self.validate(TokenType.IDENTIFIER, "")
             varName = self.lexer.identifier()
             self.symbolTable.define(varName, varType, varKind)
             if (self.debugMode == True):
                 attributes = ' name="' + varName + '" type="' + self.symbolTable.typeOf(varName) + '" kind="'  + str(self.symbolTable.kindOf(varName)) + '" ref="' + str(self.symbolTable.indexOf(varName)) + '"'
 
-            self.genLeaf(attributes) # varName
+            self.genLeaf(TokenType.IDENTIFIER, "", attributes) # varName
 
         # ";"
-        self.validate(TokenType.SYMBOL, ";")
-        self.genLeaf()
+        self.genLeaf(TokenType.SYMBOL, ";")
 
     # ('static' | 'field') type varName (',' varName)* ';'
     def compileClassVarDec(self):
@@ -195,19 +202,16 @@ class CompilationEngine:
         self.genLeaf()
 
         # subroutineName
-        self.validate(TokenType.IDENTIFIER, "")
-        self.genLeaf()
+        self.genLeaf(TokenType.IDENTIFIER, "")
 
         # '('
-        self.validate(TokenType.SYMBOL, "(")
-        self.genLeaf()
+        self.genLeaf(TokenType.SYMBOL, "(")
 
         # Recurse: parameterList
         self.compileParameterList()
 
         # ')'
-        self.validate(TokenType.SYMBOL, ")")
-        self.genLeaf()
+        self.genLeaf(TokenType.SYMBOL, ")")
 
         # subroutineBody
         # wrapped in branch, then
@@ -216,8 +220,7 @@ class CompilationEngine:
         self.genBeginBranch(bodyTag)
 
         # '{'
-        self.validate(TokenType.SYMBOL, "{")
-        self.genLeaf()
+        self.genLeaf(TokenType.SYMBOL, "{")
 
         # 0 or more varDeclarations
         while (self.lexer.tokenType() == TokenType.KEYWORD
@@ -255,8 +258,8 @@ class CompilationEngine:
                 # Would be great to refactor it so it's hidden
                 attributes = ""
                 if (self.debugMode == True):
-                    attributes = ' name="' + varName + '" type="' + self.symbolTable.typeOf(varName) + '" kind="'  + Scope.ARG + '" ref="' + str(self.symbolTable.indexOf(varName)) + '"'
-                self.genLeaf(attributes) # varName
+                    attributes = ' name="' + varName + '" type="' + self.symbolTable.typeOf(varName) + '" kind=arg"'  + '" ref="' + str(self.symbolTable.indexOf(varName)) + '"'
+                self.genLeaf("", "", attributes) # varName
 
                 #  Zero or more
                 if (self.lexer.tokenType() == TokenType.SYMBOL
@@ -308,25 +311,19 @@ class CompilationEngine:
     # THIS DOES NOT CREATE ITS OWN BRANCH, it is a helper function.
     def _emitSubroutineCall(self, includeTarget):
         if (includeTarget):
-            self.validate(TokenType.IDENTIFIER, "")
-            self.genLeaf()
+            self.genLeaf(TokenType.IDENTIFIER)
 
         if (self.lexer.tokenType() == TokenType.SYMBOL):
             if (self.lexer.symbol() == "("):
                 self.genLeaf()
                 self.compileExpressionList()
-                self.validate(TokenType.SYMBOL, ")")
-                self.genLeaf()
+                self.genLeaf(TokenType.SYMBOL, ")")
             else:
-                self.validate(TokenType.SYMBOL, ".")
-                self.genLeaf()
-                self.validate(TokenType.IDENTIFIER, "")
-                self.genLeaf()
-                self.validate(TokenType.SYMBOL, "(")
-                self.genLeaf()
+                self.genLeaf(TokenType.SYMBOL, ".")
+                self.genLeaf(TokenType.IDENTIFIER)
+                self.genLeaf(TokenType.SYMBOL, "(")
                 self.compileExpressionList()
-                self.validate(TokenType.SYMBOL, ")")
-                self.genLeaf()
+                self.genLeaf(TokenType.SYMBOL, ")")
         else:
             assert False, "Syntax error"
 
@@ -338,15 +335,13 @@ class CompilationEngine:
         self.genBeginBranch(tag)
 
         # 'do'
-        self.validate(TokenType.KEYWORD, "do")
-        self.genLeaf()
+        self.genLeaf(TokenType.KEYWORD, "do")
 
         # subroutineCall.  Note that this does not get its own branch!
         self._emitSubroutineCall(True)
 
         # ';'
-        self.validate(TokenType.SYMBOL, ";")
-        self.genLeaf()
+        self.genLeaf(TokenType.SYMBOL, ";")
 
         self.genEndBranch(tag)
 
@@ -356,12 +351,16 @@ class CompilationEngine:
         self.genBeginBranch(tag)
 
         # 'let'
-        self.validate(TokenType.KEYWORD, "let")
-        self.genLeaf()
+        self.genLeaf(TokenType.KEYWORD, "let")
 
         # varName
-        self.validate(TokenType.IDENTIFIER, "")
-        self.genLeaf()
+        # Look up the variable in the symbol table.  Failure to
+        # find it is a compiler error, since Jack requires declaration.
+        lvar = self.lexer.identifier()
+        lkind = Scope.stringForScope(self.symbolTable.kindOf(lvar))
+        lidx = self.symbolTable.indexOf(lvar)
+        loffset = 0
+        self.genLeaf(TokenType.IDENTIFIER, "")
 
         # 0 or 1 ('[' expresion ']')
         if (self.lexer.tokenType() == TokenType.SYMBOL
@@ -369,19 +368,21 @@ class CompilationEngine:
             # '['
             self.genLeaf()
             self.compileExpression()
-            self.validate(TokenType.SYMBOL, "]")
-            self.genLeaf()
+
+            # TODO: We are indexing into an array.  Need to figure this out.
+            self.genLeaf(TokenType.SYMBOL, "]")
 
         # '='
-        self.validate(TokenType.SYMBOL, "=")
-        self.genLeaf()
+        self.genLeaf(TokenType.SYMBOL, "=")
 
         # expression
         self.compileExpression()
 
         # ';'
-        self.validate(TokenType.SYMBOL, ";")
-        self.genLeaf()
+        self.genLeaf(TokenType.SYMBOL, ";")
+
+        # Complete the assignment by popping the stack.
+        self.vmwriter.writePop(lkind, str(lidx))
 
         self.genEndBranch(tag)
 
@@ -390,44 +391,47 @@ class CompilationEngine:
         tag = "whileStatement"
         self.genBeginBranch(tag)
 
+        # The head of our loop.
+        whileLabel = self.createLabel()
+        self.vmwriter.writeLabel(whileLabel)
         # 'while'
-        self.validate(TokenType.KEYWORD, "while")
-        self.genLeaf()
+        self.genLeaf(TokenType.KEYWORD, "while")
 
         # '('
-        self.validate(TokenType.SYMBOL, "(")
-        self.genLeaf()
+        self.genLeaf(TokenType.SYMBOL, "(")
 
         # expression
         self.compileExpression()
+        # Negate the expression on the stack, and jump if true
+        self.vmwriter.writeArithmetic("not")
+        outLabel = self.createLabel()
+        self.vmwriter.writeIf(outLabel)
 
         # ')'
-        self.validate(TokenType.SYMBOL, ")")
-        self.genLeaf()
+        self.genLeaf(TokenType.SYMBOL, ")")
 
         # '{'
-        self.validate(TokenType.SYMBOL, "{")
-        self.genLeaf()
+        self.genLeaf(TokenType.SYMBOL, "{")
 
         # statements
         self.compileStatements()
 
         # '}'
-        self.validate(TokenType.SYMBOL, "}")
-        self.genLeaf()
+        self.genLeaf(TokenType.SYMBOL, "}")
 
+        # Loop has run.  Jump back to the condition and do it again.
+        self.vmwriter.writeGoto(whileLabel)
+        # And place a target for our exit.
+        self.vmwriter.writeLabel(outLabel)
         self.genEndBranch(tag)
 
     # 'return' expression? ';'
     def compileReturn(self):
-        self.vmwriter.writeReturn()
-
         tag = "returnStatement"
         self.genBeginBranch(tag)
 
         # 'return'
-        self.validate(TokenType.KEYWORD, "return")
-        self.genLeaf()
+        self.genLeaf(TokenType.KEYWORD, "return")
 
         # 0 or 1 expressions
         if (not (self.lexer.tokenType() == TokenType.SYMBOL
@@ -435,8 +439,10 @@ class CompilationEngine:
             self.compileExpression()
             # compileExpression() will leave the result pushed on the stack.
 
-        self.validate(TokenType.SYMBOL, ";")
-        self.genLeaf()
+        self.genLeaf(TokenType.SYMBOL, ";")
+
+        # Process the return.
+        self.vmwriter.writeReturn()
 
         self.genEndBranch(tag)
         # Actually emit the VM code.
@@ -448,46 +454,50 @@ class CompilationEngine:
         self.genBeginBranch(tag)
 
         # 'if'
-        self.validate(TokenType.KEYWORD, "if")
-        self.genLeaf()
+        self.genLeaf(TokenType.KEYWORD, "if")
 
         # '('
-        self.validate(TokenType.SYMBOL, "(")
-        self.genLeaf()
+        self.genLeaf(TokenType.SYMBOL, "(")
 
         # expression
         self.compileExpression()
+        # If the stack is now true, we should do nothing, aka
+        # not jump - we would fallthrough.  Therefore, we want
+        # to negate it.
+        self.vmwriter.writeArithmetic("not")
+
+        # If true is on the stack at this point, we jump out.
+        elseLabel = self.createLabel()
+        self.vmwriter.writeIf(elseLabel)
 
         # ')'
-        self.validate(TokenType.SYMBOL, ")")
-        self.genLeaf()
+        self.genLeaf(TokenType.SYMBOL, ")")
 
         # '{'
-        self.validate(TokenType.SYMBOL, "{")
-        self.genLeaf()
+        self.genLeaf(TokenType.SYMBOL, "{")
 
         self.compileStatements()
 
         # '}'
-        self.validate(TokenType.SYMBOL, "}")
-        self.genLeaf()
+        self.genLeaf(TokenType.SYMBOL, "}")
 
         # 0 or 1 ('else' '{' statements '}')
 
+        # If we put our jump target here, it is correct regardless
+        # of whether or not there is an else clause.
+        self.vmwriter.writeLabel(elseLabel)
         if (self.lexer.tokenType() == TokenType.KEYWORD
             and self.lexer.keyWord() == "else"):
             # 'else'
             self.genLeaf()
 
             # '{'
-            self.validate(TokenType.SYMBOL, "{")
-            self.genLeaf()
+            self.genLeaf(TokenType.SYMBOL, "{")
 
             self.compileStatements()
 
             # '}'
-            self.validate(TokenType.SYMBOL, "}")
-            self.genLeaf()
+            self.genLeaf(TokenType.SYMBOL, "}")
 
         self.genEndBranch(tag)
 
@@ -538,8 +548,7 @@ class CompilationEngine:
                     # Array case.
                     self.genLeaf()
                     self.compileExpression()
-                    self.validate(TokenType.SYMBOL, "]")
-                    self.genLeaf()
+                    self.genLeaf(TokenType.SYMBOL, "]")
                 elif (self.lexer.symbol() == "("
                       or self.lexer.symbol() == "."):
                     self._emitSubroutineCall(False)
@@ -547,8 +556,7 @@ class CompilationEngine:
             if (self.lexer.symbol() == "("):
                 self.genLeaf()
                 self.compileExpression()
-                self.validate(TokenType.SYMBOL, ")")
-                self.genLeaf()
+                self.genLeaf(TokenType.SYMBOL, ")")
             elif (self.lexer.symbol() == "-"
                   or self.lexer.symbol() == "~"):
                 self.genLeaf()

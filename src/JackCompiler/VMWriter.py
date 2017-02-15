@@ -1,5 +1,12 @@
+from jc_types import Scope
 
 class VMWriter:
+    arithmeticOperations = ["add", "sub", "and", "or", "not", "neg", "eq", "gt", "lt"]
+
+    scopeTable = { Scope.STATIC : "static",
+                   Scope.FIELD : "dunno?",
+                   Scope.ARG : "argument",
+                   Scope.VAR : "local" }
 
     def __init__(self, dirName, fname):
         self.f = open(dirName + "/" + fname, "w")
@@ -12,19 +19,22 @@ class VMWriter:
         self._emit("push " + segment + " " + index)
 
     def writePop(self, segment, index):
-        print("Not implemented")
+        self._emit("pop " + segment + " " + index)
 
     def writeArithmetic(self, command):
-        print("Not implemented")
+        if (command in self.arithmeticOperations):
+            self._emit(command)
+        else:
+            assert False, "Internal compiler error."
 
     def writeLabel(self, label):
-        print("Not implemented")
+        self._emit("label " + label)
 
     def writeGoto(self, label):
-        print("Not implemented")
+        self._emit("goto " + label)
 
     def writeIf(self, label):
-        print("Not implemented")
+        self._emit("if-goto " + label)
 
     def writeCall(self, name, nArgs):
         print("Not implemented")

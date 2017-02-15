@@ -43,3 +43,15 @@ class Scope(Enum):
             return Scope.VAR
         else:
             return Scope.NONE
+    @staticmethod
+    def stringForScope(inScope):
+        if (inScope == Scope.STATIC):
+            return "static"
+        elif (inScope == Scope.FIELD):
+            return "field"
+        elif (inScope == Scope.ARG):
+            return "argument"
+        elif (inScope == Scope.VAR):
+            return "var"
+        else:
+            return ""
