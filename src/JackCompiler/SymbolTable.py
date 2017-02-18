@@ -23,6 +23,9 @@ class SymbolTable:
     # Starts a new subroutine scope.
     def startSubroutine(self):
         self.subroutineTable = {}
+        # Reset our metadata counts.
+        self.metadata[Scope.ARG] = 0
+        self.metadata[Scope.VAR] = 0
 
     # Defines a new identifier of given name, type, and kind,
     # and assigns index numbers
@@ -72,3 +75,16 @@ class SymbolTable:
     def indexOf(self, idName):
         (_, _, outIndex) = self.__lookup(idName)
         return outIndex
+
+    def segmentOf(self, idName):
+        kind = self.kindOf(idName)
+        if (kind == Scope.VAR):
+            return "local"
+        elif (kind == Scope.ARG):
+            return "argument"
+        elif (kind == Scope.STATIC):
+            return "static"
+        elif (kind == Scope.FIELD):
+            return "this"
+        else:
+            assert False, "Syntax error."

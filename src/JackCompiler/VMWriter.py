@@ -14,12 +14,13 @@ class VMWriter:
     # For convenience in debugging.
     def _emit(self, string):
         print(string)
+        self.f.write(string + "\n")
 
     def writePush(self, segment, index):
-        self._emit("push " + segment + " " + index)
+        self._emit("push " + segment + " " + str(index))
 
     def writePop(self, segment, index):
-        self._emit("pop " + segment + " " + index)
+        self._emit("pop " + segment + " " + str(index))
 
     def writeArithmetic(self, command):
         if (command in self.arithmeticOperations):
@@ -37,10 +38,10 @@ class VMWriter:
         self._emit("if-goto " + label)
 
     def writeCall(self, name, nArgs):
-        print("Not implemented")
+        self._emit("call " + name + " " + str(nArgs))
 
     def writeFunction(self, name, nLocals):
-        print("Not implemented")
+        self._emit("function " + name + " " + str(nLocals))
 
     def writeReturn(self):
         self._emit("return")

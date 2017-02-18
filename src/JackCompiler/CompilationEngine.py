@@ -27,6 +27,7 @@ class CompilationEngine:
         self.vmwriter = VMWriter(dirName, vmName)
         self.treeLevel = 0
         self.labelIndex = 0
+        self.currentClass = ""
         if (self.debugMode == True):
             xmlName = shortName + ".xml"
             self.f = open(dirName + "/" + xmlName, "w")
@@ -99,6 +100,7 @@ class CompilationEngine:
         self.genLeaf()
 
         # className
+        self.currentClass = self.lexer.identifier()
         self.genLeaf(TokenType.IDENTIFIER)
 
         # '{'
@@ -189,19 +191,30 @@ class CompilationEngine:
         tag = "subroutineDec"
         self.genBeginBranch(tag)
 
+        # Clear out any previous subroutine's symbol table.
+        self.symbolTable.startSubroutine()
+
+        needReflection = False
+        subroutineIsVoid = False
         # ('constructor' | 'function' | 'method')
         assert self.lexer.tokenType() == TokenType.KEYWORD, "Syntax error."
         assert (self.lexer.keyWord() == "constructor"
                 or self.lexer.keyWord() == "function"
                 or self.lexer.keyWord() == "method"), "Syntax error."
+        subrType = self.lexer.keyWord()
+        if subrType == "method":
+            needReflection = True
         self.genLeaf()
 
         # ('void' | type)
         assert (self.lexer.tokenType() == TokenType.IDENTIFIER
                 or self.lexer.tokenType() == TokenType.KEYWORD), "Syntax error."
+        if self.lexer.tokenType() == TokenType.KEYWORD and self.lexer.keyWord() == "void":
+            subroutineIsVoid = True
         self.genLeaf()
 
         # subroutineName
+        subrName = self.currentClass + "." + self.lexer.identifier()
         self.genLeaf(TokenType.IDENTIFIER, "")
 
         # '('
@@ -226,6 +239,10 @@ class CompilationEngine:
         while (self.lexer.tokenType() == TokenType.KEYWORD
                and self.lexer.keyWord() == "var"):
             self.compileVarDec()
+
+        # Emit the VM call declaration.
+        numLocals = self.symbolTable.varCount(Scope.VAR)
+        self.vmwriter.writeFunction(subrName, numLocals)
 
         # statements
         self.compileStatements()
@@ -309,25 +326,40 @@ class CompilationEngine:
     # subroutineName '(' expressionlist ')'
     # | (className | varName) '.' subroutineName '(' expressionList ')'
     # THIS DOES NOT CREATE ITS OWN BRANCH, it is a helper function.
-    def _emitSubroutineCall(self, includeTarget):
-        if (includeTarget):
+    def _emitSubroutineCall(self, targetPrefix):
+        targetName = ""
+        subroutineName = ""
+        locIdentifier = targetPrefix
+        numArgs = 0
+        # TODO: What happens if includeTarget is false?
+        if (locIdentifier == ""):
+            locIdentifier = self.lexer.identifier()
             self.genLeaf(TokenType.IDENTIFIER)
 
         if (self.lexer.tokenType() == TokenType.SYMBOL):
             if (self.lexer.symbol() == "("):
+                # The identifier was a subroutine name
+                subroutineName = locIdentifier
                 self.genLeaf()
-                self.compileExpressionList()
+                numArgs = self.compileExpressionList()
                 self.genLeaf(TokenType.SYMBOL, ")")
             else:
+                # A class-type target was found.
+                targetName = locIdentifier
                 self.genLeaf(TokenType.SYMBOL, ".")
+                subroutineName = self.lexer.identifier()
                 self.genLeaf(TokenType.IDENTIFIER)
                 self.genLeaf(TokenType.SYMBOL, "(")
-                self.compileExpressionList()
+                numArgs = self.compileExpressionList()
                 self.genLeaf(TokenType.SYMBOL, ")")
+            # and all arguments should already be on the stack.
+            # Now we have what we need to actually write the VM call.
+            if targetName != "":
+                callName = targetName + "." + subroutineName
+            self.vmwriter.writeCall(callName, numArgs)
         else:
+            print ("DEBUG: " + str(self.lexer.tokenType()))
             assert False, "Syntax error"
-
-
 
     # 'do' subroutineCall ';'
     def compileDo(self):
@@ -338,8 +370,10 @@ class CompilationEngine:
         self.genLeaf(TokenType.KEYWORD, "do")
 
         # subroutineCall.  Note that this does not get its own branch!
-        self._emitSubroutineCall(True)
-
+        self._emitSubroutineCall("")
+        # Do calls are of type void, but the VM demands that all functions
+        # return a value.  So process the dummy value.
+        self.vmwriter.writePop("temp", "0")
         # ';'
         self.genLeaf(TokenType.SYMBOL, ";")
 
@@ -357,32 +391,38 @@ class CompilationEngine:
         # Look up the variable in the symbol table.  Failure to
         # find it is a compiler error, since Jack requires declaration.
         lvar = self.lexer.identifier()
-        lkind = Scope.stringForScope(self.symbolTable.kindOf(lvar))
+        lkind = self.symbolTable.segmentOf(lvar)
         lidx = self.symbolTable.indexOf(lvar)
-        loffset = 0
         self.genLeaf(TokenType.IDENTIFIER, "")
-
-        # 0 or 1 ('[' expresion ']')
+        isArray = False
+            # 0 or 1 ('[' expresion ']')
         if (self.lexer.tokenType() == TokenType.SYMBOL
             and self.lexer.symbol() == "["):
+            isArray = True
             # '['
             self.genLeaf()
+            # Determine the offset
             self.compileExpression()
+            # Now the base address and offset are on top of the stack.
+            self.vmwriter.writeArithmetic(add)
 
-            # TODO: We are indexing into an array.  Need to figure this out.
             self.genLeaf(TokenType.SYMBOL, "]")
 
+        if isArray == True:
+            # base + offset into THAT.
+            self.vmwriter.writePop("pointer", 1)
         # '='
         self.genLeaf(TokenType.SYMBOL, "=")
 
         # expression
         self.compileExpression()
 
+        # Complete the assignment by popping the stack.
+        # If not an array assignment it's trivial.
+        if isArray == False:
+            self.vmwriter.writePop(lkind, lidx)
         # ';'
         self.genLeaf(TokenType.SYMBOL, ";")
-
-        # Complete the assignment by popping the stack.
-        self.vmwriter.writePop(lkind, str(lidx))
 
         self.genEndBranch(tag)
 
@@ -438,11 +478,11 @@ class CompilationEngine:
                  and self.lexer.symbol() == ";")):
             self.compileExpression()
             # compileExpression() will leave the result pushed on the stack.
+        else:
+            # Void function. We need to push a constant.
+            self.vmwriter.writePush("constant", 0)
 
         self.genLeaf(TokenType.SYMBOL, ";")
-
-        # Process the return.
-        self.vmwriter.writeReturn()
 
         self.genEndBranch(tag)
         # Actually emit the VM code.
@@ -468,6 +508,7 @@ class CompilationEngine:
 
         # If true is on the stack at this point, we jump out.
         elseLabel = self.createLabel()
+        exitLabel = self.createLabel()
         self.vmwriter.writeIf(elseLabel)
 
         # ')'
@@ -480,11 +521,9 @@ class CompilationEngine:
 
         # '}'
         self.genLeaf(TokenType.SYMBOL, "}")
+        self.vmwriter.writeGoto(exitLabel)
 
         # 0 or 1 ('else' '{' statements '}')
-
-        # If we put our jump target here, it is correct regardless
-        # of whether or not there is an else clause.
         self.vmwriter.writeLabel(elseLabel)
         if (self.lexer.tokenType() == TokenType.KEYWORD
             and self.lexer.keyWord() == "else"):
@@ -498,7 +537,7 @@ class CompilationEngine:
 
             # '}'
             self.genLeaf(TokenType.SYMBOL, "}")
-
+        self.vmwriter.writeLabel(exitLabel)
         self.genEndBranch(tag)
 
     # term (op term)*
@@ -509,8 +548,32 @@ class CompilationEngine:
         self.compileTerm()
         while (self.lexer.tokenType() == TokenType.SYMBOL
             and self.lexer.symbol() in self.operators):
+            # Memoize operator then...
+            infixOp = self.lexer.symbol()
             self.genLeaf()
+            # ...compile the other term, and...
             self.compileTerm()
+            # ...emit binary operator
+                # Infix operation: Grab the next side of the operator, compile it,
+                # and then emit the operation which will work on the stack.
+            if infixOp == "+":
+                self.vmwriter.writeArithmetic("add")
+            elif infixOp == "-":
+                self.vmwriter.writeArithmetic("sub")
+            elif infixOp == "*":
+                self.vmwriter.writeCall("Math.multiply", 2)
+            elif infixOp == "/":
+                self.vmwriter.writeCall("Math.divide", 2)
+            elif infixOp == "&gt;":
+                self.vmwriter.writeArithmetic("gt")
+            elif infixOp == "&lt;":
+                self.vmwriter.writeArithmetic("lt")
+            elif infixOp == "&amp;":
+                self.vmwriter.writeArithmetic("and")
+            elif infixOp == "|":
+                self.vmwriter.writeArithmetic("or")
+            elif infixOp == "=":
+                self.vmwriter.writeArithmetic("eq")
 
         self.genEndBranch(tag)
 
@@ -529,38 +592,62 @@ class CompilationEngine:
     def compileTerm(self):
         tag = "term"
         self.genBeginBranch(tag)
-
         if (self.lexer.tokenType() == TokenType.INT_CONST
             or self.lexer.tokenType() == TokenType.STRING_CONST
             or self.lexer.tokenType() == TokenType.KEYWORD):
-            self.genLeaf()
 
             if (self.lexer.tokenType() == TokenType.KEYWORD):
                 # keywordConstant: true, false, null, or this
-                print("Not implemented.")
+                kw = self.lexer.keyWord()
+                if kw == "false" or kw == "null":
+                    self.vmwriter.writePush("constant", 0)
+                elif kw == "true":
+                    self.vmwriter.writePush("constant", 1)
+                    self.vmwriter.writeArithmetic("neg")
+                else:
+                    assert kw == this, "Syntax error."
+                    print ("NOT IMPLEMENTED kw == this")
             elif (self.lexer.tokenType() == TokenType.INT_CONST):
                 # integerConstant
-                self.vmwriter.writePush("constant", self.lexer.integer())
+                self.vmwriter.writePush("constant", self.lexer.intVal())
+            else:
+                # string constant.
+                print("DEBUG: Not implemented: String constant.")
+            self.genLeaf()
         elif (self.lexer.tokenType() == TokenType.IDENTIFIER):
+            memoizedID = self.lexer.identifier()
             self.genLeaf()
             if (self.lexer.tokenType() == TokenType.SYMBOL):
                 if (self.lexer.symbol() == "["):
                     # Array case.
+                    print("DEBUG: array case.")
                     self.genLeaf()
                     self.compileExpression()
                     self.genLeaf(TokenType.SYMBOL, "]")
                 elif (self.lexer.symbol() == "("
                       or self.lexer.symbol() == "."):
-                    self._emitSubroutineCall(False)
+                    self._emitSubroutineCall(memoizedID)
+                else:
+                    # Simple case.  It's a variable, look it up directly.
+                    lKind = self.symbolTable.segmentOf(memoizedID)
+                    lIdx  = self.symbolTable.indexOf(memoizedID)
+                    self.vmwriter.writePush(lKind, lIdx)
         elif (self.lexer.tokenType() == TokenType.SYMBOL):
             if (self.lexer.symbol() == "("):
                 self.genLeaf()
                 self.compileExpression()
                 self.genLeaf(TokenType.SYMBOL, ")")
-            elif (self.lexer.symbol() == "-"
-                  or self.lexer.symbol() == "~"):
+            elif (self.lexer.symbol() == "-"):
+                # Unary negation
                 self.genLeaf()
                 self.compileTerm()
+                self.vmwriter.writeArithmetic("neg")
+            elif (self.lexer.symbol() == "~"):
+                self.genLeaf()
+                self.compileTerm()
+                self.vmwriter.writeArithmetic("not")
+            else:
+                print("DEBUG: unrecognized symbol: " + self.lexer.symbol())
         else:
             assert False, "Syntax error."
         # Handle unary op
@@ -571,15 +658,18 @@ class CompilationEngine:
     def compileExpressionList(self):
         tag = "expressionList"
         self.genBeginBranch(tag)
+        numArgs = 0
 
         # 0 or 1
         if (not (self.lexer.tokenType() == TokenType.SYMBOL
                  and self.lexer.symbol() == ")")):
+            numArgs = numArgs + 1
             self.compileExpression()
             # 0 or more
             while (self.lexer.tokenType() == TokenType.SYMBOL
                    and self.lexer.symbol() == ","):
                 self.genLeaf()
                 self.compileExpression()
-
+                numArgs = numArgs + 1
         self.genEndBranch(tag)
+        return numArgs
