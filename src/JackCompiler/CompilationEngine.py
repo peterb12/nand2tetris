@@ -391,7 +391,6 @@ class CompilationEngine:
         if self.lexer.symbol() == "(":
             # If we don't have a class by now, then the current class is
             # the target and this is a method.
-            print("( case")
             if targetClass == "":
                 arg0segment = "pointer"
                 arg0index = 0
@@ -668,6 +667,7 @@ class CompilationEngine:
                 self.vmwriter.writePush("constant", self.lexer.intVal())
             else:
                 # string constant.
+                print("NOT IMPLEMENTED")
             self.genLeaf()
         elif (self.lexer.tokenType() == TokenType.IDENTIFIER):
             memoizedID = self.lexer.identifier()
@@ -701,7 +701,6 @@ class CompilationEngine:
                 self.genLeaf()
                 self.compileTerm()
                 self.vmwriter.writeArithmetic("not")
-            else:
         else:
             assert False, "Syntax error."
 
