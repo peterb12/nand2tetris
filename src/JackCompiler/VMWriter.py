@@ -13,7 +13,7 @@ class VMWriter:
 
     # For convenience in debugging.
     def _emit(self, string):
-        print(string)
+        # print(string)
         self.f.write(string + "\n")
 
     def writePush(self, segment, index):
