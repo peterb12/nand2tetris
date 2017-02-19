@@ -43,7 +43,7 @@ class CompilationEngine:
         # No validation for identifier sequences.
 
     def createLabel(self):
-        label = "filename$" + str(self.labelIndex)
+        label = self.currentClass + "$" + str(self.labelIndex)
         self.labelIndex = self.labelIndex + 1
         return label
 
@@ -362,7 +362,6 @@ class CompilationEngine:
                or (targetClass != "" and subroutineName == "")
                or (targetClass == "" and subroutineName == "")), "Internal error."
         if (targetClass == ""):
-            print("parsing ident.")
             # Could be of form:
             # ClassName.name()
             # variable.name()
@@ -458,14 +457,10 @@ class CompilationEngine:
             self.genLeaf()
             # Determine the offset
             self.compileExpression()
-            # Now the base address and offset are on top of the stack.
-            self.vmwriter.writeArithmetic(add)
-
+            # Preserve offset
+            self.vmwriter.writePop("temp", 0)
             self.genLeaf(TokenType.SYMBOL, "]")
 
-        if isArray == True:
-            # base + offset into THAT.
-            self.vmwriter.writePop("pointer", 1)
         # '='
         self.genLeaf(TokenType.SYMBOL, "=")
 
@@ -474,7 +469,18 @@ class CompilationEngine:
 
         # Complete the assignment by popping the stack.
         # If not an array assignment it's trivial.
-        if isArray == False:
+        if isArray == True:
+            # OK, we have an array. Step 1 is to push the array pointer
+            # onto the stack.
+            self.vmwriter.writePush(lkind, lidx)
+            # Retrieve our preserved offset
+            self.vmwriter.writePush("temp", 0)
+            # Now the base address and offset are on top of the stack.
+            self.vmwriter.writeArithmetic("add")
+            # base + offset into THAT.
+            self.vmwriter.writePop("pointer", 1)
+            self.vmwriter.writePop("that", 0)
+        else:
             self.vmwriter.writePop(lkind, lidx)
         # ';'
         self.genLeaf(TokenType.SYMBOL, ";")
@@ -667,7 +673,14 @@ class CompilationEngine:
                 self.vmwriter.writePush("constant", self.lexer.intVal())
             else:
                 # string constant.
-                print("NOT IMPLEMENTED")
+                strConst = self.lexer.stringVal()
+                # Allocate space for the string
+                self.vmwriter.writePush("constant", len(strConst))
+                self.vmwriter.writeCall("String.new", 1)
+                # Now the empty string is on the stack.
+                for ix in strConst:
+                    self.vmwriter.writePush("constant", ord(ix))
+                    self.vmwriter.writeCall("String.appendChar", 2)
             self.genLeaf()
         elif (self.lexer.tokenType() == TokenType.IDENTIFIER):
             memoizedID = self.lexer.identifier()
@@ -675,9 +688,15 @@ class CompilationEngine:
             if (self.lexer.tokenType() == TokenType.SYMBOL):
                 if (self.lexer.symbol() == "["):
                     # Array case.
+                    lKind = self.symbolTable.segmentOf(memoizedID)
+                    lIdx  = self.symbolTable.indexOf(memoizedID)
+                    self.vmwriter.writePush(lKind, lIdx)
                     self.genLeaf()
                     self.compileExpression()
                     self.genLeaf(TokenType.SYMBOL, "]")
+                    self.vmwriter.writeArithmetic("add")
+                    self.vmwriter.writePop("pointer", 1)
+                    self.vmwriter.writePush("that", 0)
                 elif (self.lexer.symbol() == "("):
                     self._emitSubroutineCall(self.currentClass, memoizedID)
                 elif self.lexer.symbol() == ".":
