@@ -195,6 +195,7 @@ class CompilationEngine:
         self.symbolTable.startSubroutine()
 
         needReflection = False
+        subroutineIsConstructor = False
         subroutineIsVoid = False
         # ('constructor' | 'function' | 'method')
         assert self.lexer.tokenType() == TokenType.KEYWORD, "Syntax error."
@@ -204,6 +205,8 @@ class CompilationEngine:
         subrType = self.lexer.keyWord()
         if subrType == "method":
             needReflection = True
+        elif subrType == "constructor":
+            subroutineIsConstructor = True
         self.genLeaf()
 
         # ('void' | type)
@@ -219,6 +222,9 @@ class CompilationEngine:
 
         # '('
         self.genLeaf(TokenType.SYMBOL, "(")
+
+        if needReflection == True:
+            self.symbolTable.define("this", self.currentClass, Scope.ARG)
 
         # Recurse: parameterList
         self.compileParameterList()
@@ -243,6 +249,20 @@ class CompilationEngine:
         # Emit the VM call declaration.
         numLocals = self.symbolTable.varCount(Scope.VAR)
         self.vmwriter.writeFunction(subrName, numLocals)
+
+        if subroutineIsConstructor == True:
+            # Before compiling statements, let's allocate memory for
+            # all class fields.
+            self.vmwriter.writePush("constant", self.symbolTable.varCount(Scope.FIELD))
+            self.vmwriter.writeCall("Memory.alloc", 1)
+            # Align pointer with allocated memory in heap.
+            self.vmwriter.writePop("pointer", 0)
+
+        if needReflection == True:
+            # If this is a method, we need to align the this memory segment
+            # with the object.
+            self.vmwriter.writePush("argument", 0)
+            self.vmwriter.writePop("pointer", 0)
 
         # statements
         self.compileStatements()
@@ -271,8 +291,7 @@ class CompilationEngine:
                 assert self.lexer.tokenType() == TokenType.IDENTIFIER, "Syntax error."
                 varName = self.lexer.identifier()
                 self.symbolTable.define(varName, varType, Scope.ARG)
-                # This debugging boilerplate is a little distracting.
-                # Would be great to refactor it so it's hidden
+
                 attributes = ""
                 if (self.debugMode == True):
                     attributes = ' name="' + varName + '" type="' + self.symbolTable.typeOf(varName) + '" kind=arg"'  + '" ref="' + str(self.symbolTable.indexOf(varName)) + '"'
@@ -326,40 +345,76 @@ class CompilationEngine:
     # subroutineName '(' expressionlist ')'
     # | (className | varName) '.' subroutineName '(' expressionList ')'
     # THIS DOES NOT CREATE ITS OWN BRANCH, it is a helper function.
-    def _emitSubroutineCall(self, targetPrefix):
-        targetName = ""
-        subroutineName = ""
-        locIdentifier = targetPrefix
+    #
+    # "f(x);" always calls method f in the current class.  It is an error
+    # to make this call in a function.
+    #
+    # "do sym.f(x);" calls method f in class ClassName if sym is a data
+    # type symbol -- field, static, var -- of type ClassName.  If sym's
+    # type is not ClassName, its an error.
+    # If sym is not a data type symbol, assume it is a class name and call
+    # function f in class sym.
+    def _emitSubroutineCall(self, targetClass, subroutineName):
+        firstID = ""
         numArgs = 0
-        # TODO: What happens if includeTarget is false?
-        if (locIdentifier == ""):
-            locIdentifier = self.lexer.identifier()
+        isMethod = False
+        assert((targetClass != "" and subroutineName != "")
+               or (targetClass != "" and subroutineName == "")
+               or (targetClass == "" and subroutineName == "")), "Internal error."
+        if (targetClass == ""):
+            print("parsing ident.")
+            # Could be of form:
+            # ClassName.name()
+            # variable.name()
+            # name()
+            firstID = self.lexer.identifier()
             self.genLeaf(TokenType.IDENTIFIER)
+        assert(targetClass or firstID), "Internal error."
 
-        if (self.lexer.tokenType() == TokenType.SYMBOL):
-            if (self.lexer.symbol() == "("):
-                # The identifier was a subroutine name
-                subroutineName = locIdentifier
-                self.genLeaf()
-                numArgs = self.compileExpressionList()
-                self.genLeaf(TokenType.SYMBOL, ")")
-            else:
-                # A class-type target was found.
-                targetName = locIdentifier
-                self.genLeaf(TokenType.SYMBOL, ".")
-                subroutineName = self.lexer.identifier()
-                self.genLeaf(TokenType.IDENTIFIER)
-                self.genLeaf(TokenType.SYMBOL, "(")
-                numArgs = self.compileExpressionList()
-                self.genLeaf(TokenType.SYMBOL, ")")
-            # and all arguments should already be on the stack.
-            # Now we have what we need to actually write the VM call.
-            if targetName != "":
-                callName = targetName + "." + subroutineName
-            self.vmwriter.writeCall(callName, numArgs)
-        else:
-            print ("DEBUG: " + str(self.lexer.tokenType()))
-            assert False, "Syntax error"
+        assert self.lexer.tokenType() == TokenType.SYMBOL, "Internal error 2."
+        if self.lexer.symbol() == ".":
+            # We now know that firstID, if it exists, is a class or variable name.
+            if targetClass == "":
+                targetClass = firstID
+            # We need to check if this is a variable.
+            targetType = self.symbolTable.typeOf(targetClass)
+            if (targetType != ""):
+                # It's in the symbol table, so it MUST be a variable name
+                arg0segment = self.symbolTable.segmentOf(targetClass)
+                arg0index = self.symbolTable.indexOf(targetClass)
+                targetClass = self.symbolTable.typeOf(targetClass)
+                isMethod = True
+            assert subroutineName == "", "Internal error."
+            self.genLeaf(TokenType.SYMBOL, ".")
+            subroutineName = self.lexer.identifier()
+            self.genLeaf(TokenType.IDENTIFIER)
+        if self.lexer.symbol() == "(":
+            # If we don't have a class by now, then the current class is
+            # the target and this is a method.
+            print("( case")
+            if targetClass == "":
+                arg0segment = "pointer"
+                arg0index = 0
+                isMethod = True
+                targetClass = self.currentClass
+            # We either were passed in a subroutine name, or parsed an identifier.
+            assert(subroutineName or firstID), "Internal error."
+            if subroutineName == "":
+                subroutineName = firstID
+
+        callName = targetClass + "." + subroutineName
+        print("DEBUG: RESOLVED TO " + callName)
+        if isMethod == True:
+            print("DEBUG: Treating " + callName + " as method")
+            numArgs += 1
+            self.vmwriter.writePush(arg0segment, arg0index)
+
+        self.genLeaf()
+        numArgs += self.compileExpressionList()
+        self.genLeaf(TokenType.SYMBOL, ")")
+        # and all arguments should already be on the stack.
+        # Now we have what we need to actually write the VM call.
+        self.vmwriter.writeCall(callName, numArgs)
 
     # 'do' subroutineCall ';'
     def compileDo(self):
@@ -368,9 +423,12 @@ class CompilationEngine:
 
         # 'do'
         self.genLeaf(TokenType.KEYWORD, "do")
+        # XXX Memo to myself.  If the identifier is in the symbol table
+        # then theoretically the address of the object we need to
+        # align with is in [symbol table segment + index]
 
         # subroutineCall.  Note that this does not get its own branch!
-        self._emitSubroutineCall("")
+        self._emitSubroutineCall("", "")
         # Do calls are of type void, but the VM demands that all functions
         # return a value.  So process the dummy value.
         self.vmwriter.writePop("temp", "0")
@@ -605,8 +663,8 @@ class CompilationEngine:
                     self.vmwriter.writePush("constant", 1)
                     self.vmwriter.writeArithmetic("neg")
                 else:
-                    assert kw == this, "Syntax error."
-                    print ("NOT IMPLEMENTED kw == this")
+                    assert kw == "this", "Syntax error."
+                    self.vmwriter.writePush("pointer", 0) # ???
             elif (self.lexer.tokenType() == TokenType.INT_CONST):
                 # integerConstant
                 self.vmwriter.writePush("constant", self.lexer.intVal())
@@ -624,9 +682,12 @@ class CompilationEngine:
                     self.genLeaf()
                     self.compileExpression()
                     self.genLeaf(TokenType.SYMBOL, "]")
-                elif (self.lexer.symbol() == "("
-                      or self.lexer.symbol() == "."):
-                    self._emitSubroutineCall(memoizedID)
+                elif (self.lexer.symbol() == "("):
+                    print("DEBUG: MEMOIZED subr name: " + memoizedID)
+                    self._emitSubroutineCall(self.currentClass, memoizedID)
+                elif self.lexer.symbol() == ".":
+                    print("DEBUG: MEMOIZED class name: " + memoizedID)
+                    self._emitSubroutineCall(memoizedID, "")
                 else:
                     # Simple case.  It's a variable, look it up directly.
                     lKind = self.symbolTable.segmentOf(memoizedID)
@@ -650,7 +711,6 @@ class CompilationEngine:
                 print("DEBUG: unrecognized symbol: " + self.lexer.symbol())
         else:
             assert False, "Syntax error."
-        # Handle unary op
 
         self.genEndBranch(tag)
 
