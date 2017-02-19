@@ -403,9 +403,7 @@ class CompilationEngine:
                 subroutineName = firstID
 
         callName = targetClass + "." + subroutineName
-        print("DEBUG: RESOLVED TO " + callName)
         if isMethod == True:
-            print("DEBUG: Treating " + callName + " as method")
             numArgs += 1
             self.vmwriter.writePush(arg0segment, arg0index)
 
@@ -670,7 +668,6 @@ class CompilationEngine:
                 self.vmwriter.writePush("constant", self.lexer.intVal())
             else:
                 # string constant.
-                print("DEBUG: Not implemented: String constant.")
             self.genLeaf()
         elif (self.lexer.tokenType() == TokenType.IDENTIFIER):
             memoizedID = self.lexer.identifier()
@@ -678,15 +675,12 @@ class CompilationEngine:
             if (self.lexer.tokenType() == TokenType.SYMBOL):
                 if (self.lexer.symbol() == "["):
                     # Array case.
-                    print("DEBUG: array case.")
                     self.genLeaf()
                     self.compileExpression()
                     self.genLeaf(TokenType.SYMBOL, "]")
                 elif (self.lexer.symbol() == "("):
-                    print("DEBUG: MEMOIZED subr name: " + memoizedID)
                     self._emitSubroutineCall(self.currentClass, memoizedID)
                 elif self.lexer.symbol() == ".":
-                    print("DEBUG: MEMOIZED class name: " + memoizedID)
                     self._emitSubroutineCall(memoizedID, "")
                 else:
                     # Simple case.  It's a variable, look it up directly.
@@ -708,7 +702,6 @@ class CompilationEngine:
                 self.compileTerm()
                 self.vmwriter.writeArithmetic("not")
             else:
-                print("DEBUG: unrecognized symbol: " + self.lexer.symbol())
         else:
             assert False, "Syntax error."
 
