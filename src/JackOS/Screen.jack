@@ -11,13 +11,18 @@
  */
 
 class Screen {
-    field int     sStart    = 16384;
-    field int     sEnd      = 24575;
-    field boolean currColor = false;
+    static int     sStart;
+    static int     sEnd;
+    static int     currColor;
     
     /** Initializes the Screen. */
     function void init() {
-        Screen.clearScreen();
+        let sStart = 16384;
+        let sEnd = 24575;
+        let currColor = 0;
+        //        do Screen.clearScreen();
+        do Screen.setColor(true);
+        return;
     }
 
     /** Erases the entire screen. */
@@ -25,38 +30,77 @@ class Screen {
         var int ix;
 
         let ix = sStart;
-        while (ix <= sEnd) {
-            Memory.poke(ix, 0);
+        while (ix = sEnd + 1) {
+            do Memory.poke(ix, 0);
             let ix = ix + 1;
         }
+        return;
     }
 
     /** Sets the current color, to be used for all subsequent drawXXX commands.
      *  Black is represented by true, white by false. */
     function void setColor(boolean b) {
-        let currColor = b;
+        if (true) {
+            let currColor = -1;
+        } else {
+            let currColor = 0;
+        }
+        return;
     }
 
-// Recall that the memory map of the screen on the Hack platform
-// specifies that the pixel at column c and row r (0 ≤ c ≤ 511, 0 ≤ r ≤ 255)
-// is mapped to the c%16 bit of memory location 16384 + r · 32 + c/16.
-// Notice that drawing a single pixel requires changing a single bit in the
-// accessed word, a task that can be achieved in Jack using bit-wise
-// operations.
+    // "Recall that the memory map of the screen on the Hack platform
+    // specifies that the pixel at column c and row r (0 ≤ c ≤ 511, 0 ≤ r ≤ 255)
+    // is mapped to the c%16 bit of memory location 16384 + r · 32 + c/16.
+    // Notice that drawing a single pixel requires changing a single bit in the
+    // accessed word, a task that can be achieved in Jack using bit-wise
+    // operations."
+    // a%b = a-(a/b*b)
     /** Draws the (x,y) pixel, using the current color. */
     function void drawPixel(int x, int y) {
+        var int memLoc, pixelPattern, mod, modMask;
+        let memLoc = 16384 + (y * 32) + (x / 16);
+        let mod = x;
+        let modMask = 1;
+        let pixelPattern = currColor;
+        // Deliberately avoiding calling Math.multiply() here to
+        // avoid call setup time.
+        if (mod > 1) {
+            while (mod > 0) {
+                let modMask = modMask + modMask;
+                let mod = mod - 1;
+            }
+        }
+        // Mask out all the remaining bits.
+        let pixelPattern = pixelPattern & modMask;
+        do Memory.poke(memLoc, pixelPattern);
+        return;
     }
 
     /** Draws a line from pixel (x1,y1) to pixel (x2,y2), using the current color. */
     function void drawLine(int x1, int y1, int x2, int y2) {
+        return;
     }
 
     /** Draws a filled rectangle whose top left corner is (x1, y1)
      * and bottom right corner is (x2,y2), using the current color. */
     function void drawRectangle(int x1, int y1, int x2, int y2) {
+        var int currX, currY;
+
+        let currX = x1;
+        let currY = y1;
+        while (currY < (y2 + 1) ) {
+            while (currX < (x2 + 1)) {
+                do Screen.drawPixel(currX, currY);
+                let currX = currX + 1;
+            }
+            let currX = x1;
+            let currY = currY + 1;
+        }
+        return;
     }
 
     /** Draws a filled circle of radius r<=181 around (x,y), using the current color. */
     function void drawCircle(int x, int y, int r) {
+        return;
     }
 }
