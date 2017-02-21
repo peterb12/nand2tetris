@@ -453,12 +453,16 @@ class CompilationEngine:
         if (self.lexer.tokenType() == TokenType.SYMBOL
             and self.lexer.symbol() == "["):
             isArray = True
+
+            # OK, we have an array. Step 1 is to push the array pointer
+            # onto the stack.
+            self.vmwriter.writePush(lkind, lidx)
             # '['
             self.genLeaf()
             # Determine the offset
             self.compileExpression()
-            # Preserve offset
-            self.vmwriter.writePop("temp", 0)
+            # Now the base address and offset are on top of the stack.
+            self.vmwriter.writeArithmetic("add")
             self.genLeaf(TokenType.SYMBOL, "]")
 
         # '='
@@ -470,15 +474,12 @@ class CompilationEngine:
         # Complete the assignment by popping the stack.
         # If not an array assignment it's trivial.
         if isArray == True:
-            # OK, we have an array. Step 1 is to push the array pointer
-            # onto the stack.
-            self.vmwriter.writePush(lkind, lidx)
-            # Retrieve our preserved offset
-            self.vmwriter.writePush("temp", 0)
-            # Now the base address and offset are on top of the stack.
-            self.vmwriter.writeArithmetic("add")
-            # base + offset into THAT.
+            # Preserve the right-expression
+            self.vmwriter.writePop("temp", 0)
+            # Retrieve our (base + offset) from the stack into THAT.
             self.vmwriter.writePop("pointer", 1)
+            # Retrieve the right-expression
+            self.vmwriter.writePush("temp", 0)
             self.vmwriter.writePop("that", 0)
         else:
             self.vmwriter.writePop(lkind, lidx)
