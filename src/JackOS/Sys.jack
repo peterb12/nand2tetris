@@ -7,21 +7,43 @@
  * A library that supports various program execution services.
  */
 class Sys {
+    field int msWait;
 
     /** Performs all the initializations required by the OS. */
     function void init() {
+        msWait = 10000; // Made-up value.
+        
+        do Memory.init();
+        do Math.init();
+        do Screen.init();
+        do Keyboard.init();
+        do Output.init();
+        do Main.main();
     }
 
     /** Halts the program execution. */
     function void halt() {
+        while(true) {
+            0;
+        }
     }
 
     /** Waits approximately duration milliseconds and returns.  */
     function void wait(int duration) {
+        var ix;
+
+        while (duration > 0) {
+            let ix = msWait;
+            while (ix > 0) {
+                let ix = ix - 1;
+            }
+        }
     }
 
     /** Displays the given error code in the form "ERR<errorCode>",
      *  and halts the program's execution. */
     function void error(int errorCode) {
+        // Print error code.
+        do Sys.halt();
     }
 }

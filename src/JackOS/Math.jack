@@ -27,6 +27,35 @@ class Math {
      *  the Jack expressions x*y and multiply(x,y) return the same value.
      */
     function int multiply(int x, int y) {
+        // Slow implementation
+        var int sum, multiplier, multiplicand;
+        var boolean neg;
+        
+        if (((x > 0) & (y > 0)) | ((x < 0) & (y < 0))) {
+            neg = false;
+        } else {
+            neg = true;
+        }
+        x = Math.abs(x);
+        y = Math.abs(y);
+        
+        sum = 0;
+        if (x < y) {
+            multiplier = x;
+            multiplicand = y;
+        } else {
+            multiplier = y;
+            multiplicand = x;
+        }
+        while (multiplier > 0) {
+            sum = sum + multiplicand;
+            multiplier = multiplier - 1
+        }
+        if (neg = true) {
+            sum = -sum;
+        }
+            
+        return sum;
     }
 
     /** Returns the integer part of x/y.
@@ -35,10 +64,35 @@ class Math {
      *  the Jack expressions x/y and divide(x,y) return the same value.
      */
     function int divide(int x, int y) {
+        var int quotient;
+        var boolean neg;
+
+        if (y = 0) {
+            Sys.error(2);
+        }
+        if (((x > 0) & (y > 0)) | ((x < 0) & (y < 0))) {
+            neg = false;
+        } else {
+            neg = true;
+        }
+        x = Math.abs(x);
+        y = Math.abs(y);
+
+        while (x > 0) {
+            quotient = quotient + 1;
+            x = x - y;
+        }
+        if (neg = true) {
+            quotient = -quotient;
+        }
+        return quotient;
     }
 
     /** Returns the integer part of the square root of x. */
     function int sqrt(int x) {
+        // Ha ha ha.
+        // TODO: implement this for real.
+        return 5;
     }
 
     /** Returns the greater number. */

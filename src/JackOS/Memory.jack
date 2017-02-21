@@ -12,7 +12,6 @@ class Memory {
     field Array ram;
     field int   free, max;
     
-   
     /** Initializes the class. */
     function void init() {
         // "ram" points at the top of memory.
@@ -21,10 +20,10 @@ class Memory {
         ram = 0;
         /*
          * The standard implementation of the VM over the Hack platform specifies that
-	 *  the heap resides at RAM locations 2048-16383
+         *  the heap resides at RAM locations 2048-16383
          */
-	free = 2048;
-	max = 16383
+        free = 2048;
+        max = 16383;
     }
 
     /** Returns the RAM value at the given address. */
@@ -41,21 +40,23 @@ class Memory {
     /** Finds an available RAM block of the given size and returns
      *  a reference to its base address. */
     function int alloc(int size) {
-	var addrToReturn;
+        var addrToReturn;
 
-	// Most naive implementation possible.
-	if (size > (max - free)) {
-	    Sys.error(1); // Whoops.
-	}
-	addrToReturn = free;
-	free = free + size;
-	return addrToReturn;
+        // Most naive implementation possible.
+        if (size > (max - free)) {
+            Sys.error(1); // Whoops.
+        }
+        let addrToReturn = free;
+        let free = free + size;
+        return addrToReturn;
     }
 
     /** De-allocates the given object (cast as an array) by making
      *  it available for future allocations. */
     function void deAlloc(Array o) {
-	// This space intentionally left blank.
+        // This space intentionally left blank.
+        return;
     }    
 }
+
 

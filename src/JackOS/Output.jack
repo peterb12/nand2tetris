@@ -19,8 +19,14 @@ class Output {
     // Character map for displaying characters
     static Array charMaps; 
 
+    // Cursor position
+    field int cX, cY;
+    
     /** Initializes the screen, and locates the cursor at the screen's top-left. */
     function void init() {
+        let cX = 0;
+        let cY = 0;
+        Output.initMap();
     }
 
     // Initializes the character map array
@@ -32,7 +38,7 @@ class Output {
         // Black square, used for displaying non-printable characters.
         do Output.create(0,63,63,63,63,63,63,63,63,63,0,0);
 
-        // Assigns the bitmap for each character in the charachter set.
+        // Assigns the bitmap for each character in the character set.
         // The first parameter is the character index, the next 11 numbers
         // are the values of each row in the frame that represents this character.
         do Output.create(32,0,0,0,0,0,0,0,0,0,0,0);          //
@@ -71,7 +77,7 @@ class Output {
         do Output.create(64,30,51,51,59,59,59,27,3,30,0,0);  // @
         do Output.create(63,30,51,51,24,12,12,0,12,12,0,0);  // ?
 
-        do Output.create(65,0,0,0,0,0,0,0,0,0,0,0);          // A ** TO BE FILLED **
+        do Output.create(65,12,0,0,0,0,0,0,0,0,0,0);          // A ** TO BE FILLED **
         do Output.create(66,31,51,51,51,31,51,51,51,31,0,0); // B
         do Output.create(67,28,54,35,3,3,3,35,54,28,0,0);    // C
         do Output.create(68,15,27,51,51,51,51,51,27,15,0,0); // D
@@ -173,31 +179,54 @@ class Output {
         return charMaps[c];
     }
 
+    function void _drawGlyph(char c) {
+
+        return;
+    }
     /** Moves the cursor to the j-th column of the i-th row,
      *  and erases the character displayed there. */
     function void moveCursor(int i, int j) {
+        let cX = i;
+        let cY = j;
+        return;
     }
 
     /** Displays the given character at the cursor location,
      *  and advances the cursor one column forward. */
     function void printChar(char c) {
+        
+        return;
     }
 
     /** displays the given string starting at the cursor location,
      *  and advances the cursor appropriately. */
     function void printString(String s) {
+
+        return;
     }
 
     /** Displays the given integer starting at the cursor location,
      *  and advances the cursor appropriately. */
     function void printInt(int i) {
+
+        return;
     }
 
     /** Advances the cursor to the beginning of the next line. */
     function void println() {
+        let cX = 0;
+        let cY = cY + 1; // Todo: edge conditions.
+
+        return;
     }
 
     /** Moves the cursor one column back. */
     function void backSpace() {
+        // Should this go to a previous row if on the leftmost
+        // column?
+        if (cY > 0) {
+            let cY = cY - 1;
+        }
+        return;
     }
 }

@@ -9,21 +9,40 @@
  * of 256 pixels each (indexed 0..255, left to right). The top left pixel on 
  * the screen is indexed (0,0).
  */
-class Screen {
 
+class Screen {
+    field int     sStart    = 16384;
+    field int     sEnd      = 24575;
+    field boolean currColor = false;
+    
     /** Initializes the Screen. */
     function void init() {
+        Screen.clearScreen();
     }
 
     /** Erases the entire screen. */
     function void clearScreen() {
+        var int ix;
+
+        let ix = sStart;
+        while (ix <= sEnd) {
+            Memory.poke(ix, 0);
+            let ix = ix + 1;
+        }
     }
 
     /** Sets the current color, to be used for all subsequent drawXXX commands.
      *  Black is represented by true, white by false. */
     function void setColor(boolean b) {
+        let currColor = b;
     }
 
+// Recall that the memory map of the screen on the Hack platform
+// specifies that the pixel at column c and row r (0 ≤ c ≤ 511, 0 ≤ r ≤ 255)
+// is mapped to the c%16 bit of memory location 16384 + r · 32 + c/16.
+// Notice that drawing a single pixel requires changing a single bit in the
+// accessed word, a task that can be achieved in Jack using bit-wise
+// operations.
     /** Draws the (x,y) pixel, using the current color. */
     function void drawPixel(int x, int y) {
     }
