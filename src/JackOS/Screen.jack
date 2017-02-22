@@ -40,7 +40,7 @@ class Screen {
     /** Sets the current color, to be used for all subsequent drawXXX commands.
      *  Black is represented by true, white by false. */
     function void setColor(boolean b) {
-        if (true) {
+        if (b) {
             let currColor = -1;
         } else {
             let currColor = 0;
@@ -59,9 +59,9 @@ class Screen {
     function void drawPixel(int x, int y) {
         var int memLoc, pixelPattern, mod, modMask;
         let memLoc = 16384 + (y * 32) + (x / 16);
-        let mod = x;
+        let pixelPattern = Memory.peek(memLoc);
+        let mod = x - ((x / 16) * 16);
         let modMask = 1;
-        let pixelPattern = currColor;
         // Deliberately avoiding calling Math.multiply() here to
         // avoid call setup time.
         if (mod > 1) {
@@ -71,7 +71,13 @@ class Screen {
             }
         }
         // Mask out all the remaining bits.
-        let pixelPattern = pixelPattern & modMask;
+        if (currColor = -1) {
+            // Turning on.  We want to OR.
+            let pixelPattern = pixelPattern | (currColor & modMask);
+        } else {
+            // Turning off.  Use AND.
+            let pixelPattern = pixelPattern & (currColor & modMask);
+        }
         do Memory.poke(memLoc, pixelPattern);
         return;
     }
@@ -88,8 +94,8 @@ class Screen {
 
         let currX = x1;
         let currY = y1;
-        while (currY < (y2 + 1) ) {
-            while (currX < (x2 + 1)) {
+        while (currY < (y2) ) {
+            while (currX < (x2)) {
                 do Screen.drawPixel(currX, currY);
                 let currX = currX + 1;
             }

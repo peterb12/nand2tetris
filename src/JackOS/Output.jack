@@ -20,13 +20,14 @@ class Output {
     static Array charMaps; 
 
     // Cursor position
-    field int cX, cY;
+    static int cX, cY;
     
     /** Initializes the screen, and locates the cursor at the screen's top-left. */
     function void init() {
         let cX = 0;
         let cY = 0;
-        Output.initMap();
+        do Output.initMap();
+        return;
     }
 
     // Initializes the character map array
@@ -179,29 +180,44 @@ class Output {
         return charMaps[c];
     }
 
-    function void _drawGlyph(char c) {
-
-        return;
-    }
     /** Moves the cursor to the j-th column of the i-th row,
      *  and erases the character displayed there. */
     function void moveCursor(int i, int j) {
         let cX = i;
         let cY = j;
+        do Output.printChar(32);
         return;
     }
 
     /** Displays the given character at the cursor location,
      *  and advances the cursor one column forward. */
     function void printChar(char c) {
-        
+        var Array cm;
+        var int   screenLoc, ix;
+        let cm = Output.getMap(c);
+        let ix = 0;
+        //        let screenLoc = 16384 + (cY * 32) + (cX / 16);
+        let screenLoc = 16384 + (cY * 8 * 32); 
+        while (ix < 11) {
+            let screenLoc = cm[ix];
+            let screenLoc = screenLoc + 32;
+            let ix = ix + 1;
+        }
+        let cX = cX + 1;
         return;
     }
 
     /** displays the given string starting at the cursor location,
      *  and advances the cursor appropriately. */
     function void printString(String s) {
+        var int ix, strlen;
 
+        let ix = 0;
+        let strlen = s.length();
+        while (ix < strlen) {
+            do Output.printChar(s.charAt(ix));
+            let ix = ix + 1;
+        }
         return;
     }
 
