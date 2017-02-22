@@ -73,20 +73,25 @@ class String {
      *  until a non-digit character is detected. */
     method int intValue() {
         var int     ix, c, placeDigit, result;
-        var boolean neg;
+        var boolean neg, done;
         let zero = 48;
         let ix = 0;
         let neg = false;
-        while (ix < length) {
+        let done = false;
+        while (~done & (ix < length)) {
             // Safe because first time through this loop
             // result will be 0.
             let c = storage[ix];
             if (c = 45) {
                 let neg = true;
             } else {
-                let result = result * 10;
-                let placeDigit = c - zero;
-                let result = result + placeDigit;
+                if (c < 48 | c > 57) {
+                    let done = true;
+                } else {
+                    let result = result * 10;
+                    let placeDigit = c - zero;
+                    let result = result + placeDigit;
+                }
             }
             let ix = ix + 1;
         }

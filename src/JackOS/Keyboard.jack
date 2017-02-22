@@ -7,11 +7,16 @@
  * A library for handling user input from the keyboard.
  */
 class Keyboard {
-    field int kbmmap;
+    static int kbmmap;
+    static char newLine;
+    static char backspace;
     
     /** Initializes the keyboard. */
     function void init() {
         let kbmmap = 24576;
+        let newLine = String.newLine();
+        let backspace = String.backspace();
+        return;
     } 
 
     /**
@@ -44,6 +49,24 @@ class Keyboard {
      * of the pressed key.
      */
     function char readChar() {
+        var char inChar, sink;
+
+        let inChar = Keyboard.keyPressed();
+        while (~(inChar = 0)) {
+            do Sys.wait(5);
+        }
+        // Keypress is 0.
+        while (inChar = 0) {
+            do Sys.wait(5);
+            let inChar = Keyboard.keyPressed();
+        }
+        let sink = inChar;
+        while (~(sink = 0)) {
+            do Sys.wait(5);
+            let sink = Keyboard.keyPressed();            
+        }
+        return inChar;
+        
     }
 
     /**								
@@ -52,6 +75,24 @@ class Keyboard {
      * and returns its value. Also handles user backspaces.
      */
     function String readLine(String message) {
+        var char inChar;
+        var String inString;
+
+        let inString = String.new(128); // Magic number.
+        do String.printString(message);
+        while (~(inChar = newLine) & (inString.length() < 128)) {
+            let inChar = Keyboard.readChar();
+            if ((inChar = backspace) & (inString.length() > 0)) {
+                do inString.eraseLastChar();
+                do Output.backSpace();
+            } else {
+                if (~(inChar = newLine)) {
+                    do inString.appendChar(inChar);
+                    do Output.printChar(inChar);
+                }
+            }
+        }
+        return inString;
     }   
 
     /**								
@@ -61,5 +102,12 @@ class Keyboard {
      * entered text is detected). Also handles user backspaces. 
      */
     function int readInt(String message) {
+        var int    intVal;
+        var String inString;
+
+        let inString = String.readLine(message);
+        let intVal = inString.intValue();
+        
+        return intVal;
     }
 }
