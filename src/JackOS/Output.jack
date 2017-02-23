@@ -107,7 +107,7 @@ class Output {
 
         do Output.create(91,30,6,6,6,6,6,6,6,30,0,0);          // [
         do Output.create(92,0,0,1,3,6,12,24,48,32,0,0);        // \
-        do Output.create(93,30,24,24,24,24,24,24,24,30,0,0);   // ]
+                                                               do Output.create(93,30,24,24,24,24,24,24,24,30,0,0);   // ]
         do Output.create(94,8,28,54,0,0,0,0,0,0,0,0);          // ^
         do Output.create(95,0,0,0,0,0,0,0,0,0,63,0);           // _
         do Output.create(96,6,12,24,0,0,0,0,0,0,0,0);          // `
@@ -144,15 +144,15 @@ class Output {
         do Output.create(125,7,12,12,12,56,12,12,12,7,0,0);    // }
         do Output.create(126,38,45,25,0,0,0,0,0,0,0,0);        // ~
 
-	return;
+        return;
     }
 
     // Creates the character map array of the given character index, using the given values.
     function void create(int index, int a, int b, int c, int d, int e,
                          int f, int g, int h, int i, int j, int k) {
-	var Array map;
+        var Array map;
 
-	let map = Array.new(11);
+        let map = Array.new(11);
         let charMaps[index] = map;
 
         let map[0] = a;
@@ -180,29 +180,45 @@ class Output {
         return charMaps[c];
     }
 
+    function void _putGlyph(char c) {
+        var Array cm;
+        var int   screenLoc, ix, xDiv, xMod, putLMask, putRMask, dblChar, screenChar;
+        let putRMask = -256;
+        let putLMask = 255;
+        let cm = Output.getMap(c);
+        let ix = 0;
+        let xDiv = cX / 2;
+        let xMod = (cX - (xDiv * 2));
+        let screenLoc = 16384 + (cY * 11 * 32) + xDiv; 
+        while (ix < 11) {
+            let dblChar = cm[ix] + (cm[ix] * 256);
+            if (xMod = 1) {
+                let dblChar = dblChar & putRMask;
+                let screenChar = Memory.peek(screenLoc) & putLMask;
+            } else {
+                let dblChar = dblChar & putLMask;
+                let screenChar = Memory.peek(screenLoc) & putRMask;
+            }
+            do Memory.poke(screenLoc, (dblChar | screenChar));
+            let screenLoc = screenLoc + 32;
+            let ix = ix + 1;
+        }
+        return;
+    }
+
     /** Moves the cursor to the j-th column of the i-th row,
      *  and erases the character displayed there. */
     function void moveCursor(int i, int j) {
-        let cX = i;
-        let cY = j;
-        do Output.printChar(32);
+        let cY = i;
+        let cX = j;
+        do Output._putGlyph(32);
         return;
     }
 
     /** Displays the given character at the cursor location,
      *  and advances the cursor one column forward. */
     function void printChar(char c) {
-        var Array cm;
-        var int   screenLoc, ix;
-        let cm = Output.getMap(c);
-        let ix = 0;
-        //        let screenLoc = 16384 + (cY * 32) + (cX / 16);
-        let screenLoc = 16384 + (cY * 8 * 32); 
-        while (ix < 11) {
-            let screenLoc = cm[ix];
-            let screenLoc = screenLoc + 32;
-            let ix = ix + 1;
-        }
+        do Output._putGlyph(c);
         let cX = cX + 1;
         return;
     }
@@ -224,7 +240,11 @@ class Output {
     /** Displays the given integer starting at the cursor location,
      *  and advances the cursor appropriately. */
     function void printInt(int i) {
+        var String numRep;
 
+        let numRep = String.new(32);
+        do numRep.setInt(i);
+        do Output.printString(numRep);
         return;
     }
 
@@ -240,8 +260,8 @@ class Output {
     function void backSpace() {
         // Should this go to a previous row if on the leftmost
         // column?
-        if (cY > 0) {
-            let cY = cY - 1;
+        if (cX > 0) {
+            let cX = cX - 1;
         }
         return;
     }
