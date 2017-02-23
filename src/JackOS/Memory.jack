@@ -9,21 +9,22 @@
  * consists of 32,768 words, each holding a 16-bit binary number.
  */ 
 class Memory {
-    field Array ram;
-    field int   free, max;
+    static Array ram;
+    static int   free, max;
     
     /** Initializes the class. */
     function void init() {
         // "ram" points at the top of memory.
         // This uses what is essentially a bug in Jack to allow
         // arbitrary access to the entire memory space of the machine.
-        ram = 0;
+        let ram = 0;
         /*
          * The standard implementation of the VM over the Hack platform specifies that
          *  the heap resides at RAM locations 2048-16383
          */
-        free = 2048;
-        max = 16383;
+        let free = 2048;
+        let max = 16383;
+        return;
     }
 
     /** Returns the RAM value at the given address. */
@@ -40,11 +41,11 @@ class Memory {
     /** Finds an available RAM block of the given size and returns
      *  a reference to its base address. */
     function int alloc(int size) {
-        var addrToReturn;
+        var int addrToReturn;
 
         // Most naive implementation possible.
         if (size > (max - free)) {
-            Sys.error(1); // Whoops.
+            do Sys.error(1); // Whoops.
         }
         let addrToReturn = free;
         let free = free + size;

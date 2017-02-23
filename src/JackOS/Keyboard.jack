@@ -15,7 +15,7 @@ class Keyboard {
     function void init() {
         let kbmmap = 24576;
         let newLine = String.newLine();
-        let backspace = String.backspace();
+        let backspace = String.backSpace();
         return;
     } 
 
@@ -79,7 +79,7 @@ class Keyboard {
         var String inString;
 
         let inString = String.new(128); // Magic number.
-        do String.printString(message);
+        do Output.printString(message);
         while (~(inChar = newLine) & (inString.length() < 128)) {
             let inChar = Keyboard.readChar();
             if ((inChar = backspace) & (inString.length() > 0)) {
@@ -105,7 +105,7 @@ class Keyboard {
         var int    intVal;
         var String inString;
 
-        let inString = String.readLine(message);
+        let inString = Keyboard.readLine(message);
         let intVal = inString.intValue();
         
         return intVal;

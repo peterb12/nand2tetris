@@ -11,6 +11,7 @@ class Math {
 
     /** Initializes the library. */
     function void init() {
+        return;
     }
 
     /** Returns the absolute value of x. */
@@ -32,27 +33,27 @@ class Math {
         var boolean neg;
         
         if (((x > 0) & (y > 0)) | ((x < 0) & (y < 0))) {
-            neg = false;
+            let neg = false;
         } else {
-            neg = true;
+            let neg = true;
         }
-        x = Math.abs(x);
-        y = Math.abs(y);
+        let x = Math.abs(x);
+        let y = Math.abs(y);
         
-        sum = 0;
+        let sum = 0;
         if (x < y) {
-            multiplier = x;
-            multiplicand = y;
+            let multiplier = x;
+            let multiplicand = y;
         } else {
-            multiplier = y;
-            multiplicand = x;
+            let multiplier = y;
+            let multiplicand = x;
         }
         while (multiplier > 0) {
-            sum = sum + multiplicand;
-            multiplier = multiplier - 1
+            let sum = sum + multiplicand;
+            let multiplier = multiplier - 1;
         }
-        if (neg = true) {
-            sum = -sum;
+        if (neg) {
+            let sum = -sum;
         }
             
         return sum;
@@ -68,22 +69,22 @@ class Math {
         var boolean neg;
 
         if (y = 0) {
-            Sys.error(2);
+            do Sys.error(2);
         }
         if (((x > 0) & (y > 0)) | ((x < 0) & (y < 0))) {
-            neg = false;
+            let neg = false;
         } else {
-            neg = true;
+            let neg = true;
         }
-        x = Math.abs(x);
-        y = Math.abs(y);
+        let x = Math.abs(x);
+        let y = Math.abs(y);
 
         while (x > 0) {
-            quotient = quotient + 1;
-            x = x - y;
+            let quotient = quotient + 1;
+            let x = x - y;
         }
-        if (neg = true) {
-            quotient = -quotient;
+        if (neg) {
+            let quotient = -quotient;
         }
         return quotient;
     }
